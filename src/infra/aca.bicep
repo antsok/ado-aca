@@ -62,6 +62,7 @@ resource aca 'Microsoft.App/containerApps@2022-01-01-preview' = {
   properties:{
     managedEnvironmentId: containerAppEnvironment.id
     configuration:{
+      activeRevisionsMode: 'multiple'
       registries:[
         {
           server: '${acrName}.azurecr.io'
@@ -85,10 +86,6 @@ resource aca 'Microsoft.App/containerApps@2022-01-01-preview' = {
         {
           name: 'azp-pool'
           value: azpPool
-        }
-        {
-          name: 'azp-poolid'
-          value: azpPoolId
         }
       ]
     }
@@ -114,20 +111,34 @@ resource aca 'Microsoft.App/containerApps@2022-01-01-preview' = {
               name: 'AZP_POOL'
               secretRef: 'azp-pool'
             }
-            {
-              name: 'AZP_POOLID'
-              secretRef: 'azp-poolid'
-            }
-            {
-              name: 'AZP_AGENT_NAME'
-              value: 'ado-agent-aca'
-            }
           ]
         }
       ]
       scale: {
         minReplicas: minContainerCount
         maxReplicas: maxContainerCount
+        rules: [
+          {
+            name: 'cpu-scaling-rule'
+            custom: {
+              type: 'cpu'
+              metadata: {
+                type: 'Utilization'
+                value: '25'
+              }
+            }
+          }
+          {
+            name: 'memory-scaling-rule'
+            custom: {
+              type: 'memory'
+              metadata: {
+                type: 'Utilization'
+                value: '50'
+              }
+            }
+          }
+        ]
       }
     }
   }
