@@ -14,4 +14,4 @@ Deployment:
 - if needed change subscription `az account set -n '<subscription name>'`
 - create resource group `az group create -l 'westeurope' -n 'ado-agents-rg'`
 - run `az deployment group create --resource-group 'ado-agents-rg' --template-file src/infra/acr.bicep`
-- run `az deployment group create --resource-group 'ado-agents-rg' --template-file src/infra/aca.bicep --parameters azpUrl=https://dev.azure.com/<YourADOproject> azpPool=<Agent-Pool-Name> azpToken=<PAT Token>`
+- run `az deployment group create --resource-group 'ado-agents-rg' --template-file src/infra/aca.bicep --parameters azpUrl=https://dev.azure.com/<YourADOproject> azpPool=<Agent-Pool-Name> azpToken=<PAT Token> containerCount=<number of agents>`
