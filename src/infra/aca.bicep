@@ -11,9 +11,7 @@ param imageName string = 'adoagent:v1.0.0'
 
 param containerAppName string = 'ado-agents-ca'
 @minValue(1)
-param minContainerCount int = 1
-@minValue(1)
-param maxContainerCount int = 5
+param containerCount int = 1
 
 @secure()
 param azpUrl string
@@ -21,7 +19,14 @@ param azpUrl string
 param azpToken string
 @secure()
 param azpPool string
-param azpPoolId string = ''
+
+param multipleRevisions bool = false
+
+param experimentalScaling bool = false
+param experimentalScalingCount int = 0
+
+var minContainerCount = containerCount
+var maxContainerCount = (experimentalScalingCount > 0 && experimentalScaling) ? experimentalScalingCount : containerCount
 
 // Prepare
 resource laWorkspace 'Microsoft.OperationalInsights/workspaces@2020-10-01' = {
@@ -62,7 +67,7 @@ resource aca 'Microsoft.App/containerApps@2022-01-01-preview' = {
   properties:{
     managedEnvironmentId: containerAppEnvironment.id
     configuration:{
-      activeRevisionsMode: 'multiple'
+      activeRevisionsMode: multipleRevisions ? 'multiple' : 'single'
       registries:[
         {
           server: '${acrName}.azurecr.io'
@@ -117,7 +122,7 @@ resource aca 'Microsoft.App/containerApps@2022-01-01-preview' = {
       scale: {
         minReplicas: minContainerCount
         maxReplicas: maxContainerCount
-        rules: [
+        rules: !experimentalScaling ? [] : [
           {
             name: 'cpu-scaling-rule'
             custom: {
