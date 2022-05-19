@@ -2,13 +2,13 @@ targetScope = 'resourceGroup'
 
 param location string = 'westeurope'
 
+param acrName string = 'adoagentsacr${uniqueString(resourceGroup().id)}'
+param imageVersion string = 'v1.0.0'
+param imageName string = 'adoagent'
+
 param laWorkspaceName string = 'ado-agents-la'
 
 param containerAppEnvironmentName string = 'ado-agents-ce'
-
-param acrName string = 'adoagentsacr${uniqueString(resourceGroup().id)}'
-param imageName string = 'adoagent:v1.0.0'
-
 param containerAppName string = 'ado-agents-ca'
 @minValue(1)
 param containerCount int = 1
@@ -24,6 +24,8 @@ param multipleRevisions bool = false
 
 param experimentalScaling bool = false
 param experimentalScalingCount int = 0
+
+var fullImageName = '${imageName}:${imageVersion}'
 
 var minContainerCount = containerCount
 var maxContainerCount = (experimentalScalingCount > 0 && experimentalScaling) ? experimentalScalingCount : containerCount
@@ -98,7 +100,7 @@ resource aca 'Microsoft.App/containerApps@2022-01-01-preview' = {
       containers: [
         {
           name: 'ado-agent'
-          image: '${acrName}.azurecr.io/${imageName}'
+          image: '${acrName}.azurecr.io/${fullImageName}'
           resources: {
             cpu: 1
             memory: '2Gi'
