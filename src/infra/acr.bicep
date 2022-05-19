@@ -14,7 +14,12 @@ param ghToken string = ''
 param ghUser string = 'antsok'
 param ghPath string = 'ado-aca.git#main:src/agent'
 
+param isTriggeredByTime bool = false
+param isTriggeredBySource bool = false
+param isTriggeredByBaseImage bool = false
+
 var fullImageName = '${imageName}:${imageVersion}'
+var ghRepositoryUrl = 'https://github.com/${ghUser}/${ghPath}'
 
 resource acr 'Microsoft.ContainerRegistry/registries@2021-06-01-preview' = {
   name: acrName
@@ -30,7 +35,7 @@ resource acr 'Microsoft.ContainerRegistry/registries@2021-06-01-preview' = {
   }
 }
 
-resource acrTask 'Microsoft.ContainerRegistry/registries/tasks@2019-04-01' = {
+resource acrTask 'Microsoft.ContainerRegistry/registries/tasks@2019-06-01-preview' = {
   name: 'adoagent-build-task'
   parent: acr
   location: location
@@ -45,7 +50,7 @@ resource acrTask 'Microsoft.ContainerRegistry/registries/tasks@2019-04-01' = {
     step: {
       type: 'Docker'
       contextAccessToken: !empty(ghToken) ? ghToken : null
-      contextPath: 'https://github.com/${ghUser}/${ghPath}'
+      contextPath: ghRepositoryUrl
       dockerFilePath: 'Dockerfile'
       imageNames:[
         fullImageName
@@ -53,12 +58,35 @@ resource acrTask 'Microsoft.ContainerRegistry/registries/tasks@2019-04-01' = {
       isPushEnabled: true
     }
     trigger: {
-      timerTriggers:[
+      timerTriggers: isTriggeredByTime ? [
         {
           name: 'adoagent-build-task-timer'
           schedule: cronSchedule
         }
-      ]
+      ] : []
+      baseImageTrigger: isTriggeredByBaseImage ? {
+        name: 'adoagent-build-task-base-image-trigger'
+        baseImageTriggerType: 'All'
+        status: 'Enabled'
+      } : {}
+      sourceTriggers: isTriggeredBySource ? [
+        {
+          name: 'adoagent-build-task-source-trigger'
+          sourceTriggerEvents: [
+            'pullrequest'
+            'commit'
+          ]
+          sourceRepository: {
+            repositoryUrl: ghRepositoryUrl
+            sourceControlType: 'Github'
+            branch: 'main'
+            sourceControlAuthProperties: {
+              token: !empty(ghToken) ? ghToken : ''
+              tokenType: 'PAT'
+            }
+          }
+        }
+      ] : []
     }
   }
 }
