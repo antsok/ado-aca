@@ -6,6 +6,9 @@ param acrName string = 'adoagentsacr${uniqueString(resourceGroup().id)}'
 param imageVersion string = 'v1.0.0'
 param imageName string = 'adoagent'
 
+@description('Cron config of daily image updates. Default: "0 4 * * *"')
+param cronSchedule string = '0 4 * * *'
+
 @secure()
 param ghToken string = ''
 param ghUser string = 'antsok'
@@ -48,6 +51,14 @@ resource acrTask 'Microsoft.ContainerRegistry/registries/tasks@2019-04-01' = {
         fullImageName
       ]
       isPushEnabled: true
+    }
+    trigger: {
+      timerTriggers:[
+        {
+          name: 'adoagent-build-task-timer'
+          schedule: cronSchedule
+        }
+      ]
     }
   }
 }
