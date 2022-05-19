@@ -53,7 +53,7 @@ resource acrTask 'Microsoft.ContainerRegistry/registries/tasks@2019-04-01' = {
 }
 
 resource acrTaskRun 'Microsoft.ContainerRegistry/registries/taskRuns@2019-06-01-preview' = {
-  name: 'adoagent-taskrun-${uniqueString(acrTask.id)}'
+  name: 'adoagent-taskrun'
   parent: acr
   location: location
   properties: {
