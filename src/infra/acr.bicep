@@ -3,13 +3,15 @@ targetScope = 'resourceGroup'
 param location string = 'westeurope'
 
 param acrName string = 'adoagentsacr${uniqueString(resourceGroup().id)}'
-param imageName string = 'adoagent:v1.0.0'
+param imageVersion string = 'v1.0.0'
+param imageName string = 'adoagent'
 
 @secure()
 param ghToken string = ''
 param ghUser string = 'nlasok1'
 param ghPath string = 'ado-aca.git#main:src/agent'
 
+var fullImageName = '${imageName}:${imageVersion}'
 
 resource acr 'Microsoft.ContainerRegistry/registries@2021-06-01-preview' = {
   name: acrName
@@ -26,7 +28,7 @@ resource acr 'Microsoft.ContainerRegistry/registries@2021-06-01-preview' = {
 }
 
 resource acrTask 'Microsoft.ContainerRegistry/registries/tasks@2019-04-01' = {
-  name: 'adoagent-task'
+  name: 'adoagent-build-task'
   parent: acr
   location: location
   properties: {
@@ -43,7 +45,7 @@ resource acrTask 'Microsoft.ContainerRegistry/registries/tasks@2019-04-01' = {
       contextPath: 'https://github.com/${ghUser}/${ghPath}'
       dockerFilePath: 'Dockerfile'
       imageNames:[
-        imageName
+        fullImageName
       ]
       isPushEnabled: true
     }
@@ -51,16 +53,23 @@ resource acrTask 'Microsoft.ContainerRegistry/registries/tasks@2019-04-01' = {
 }
 
 resource acrTaskRun 'Microsoft.ContainerRegistry/registries/taskRuns@2019-06-01-preview' = {
-  name: 'adoagent-taskrun${uniqueString(resourceGroup().id)}'
+  name: 'adoagent-taskrun-${uniqueString(acrTask.id)}'
   parent: acr
   location: location
   properties: {
     runRequest: {
       type: 'TaskRunRequest'
       taskId: acrTask.id
+      isArchiveEnabled: false
     }
   }
 }
 
 @description('Output the login server property for later use')
 output acrLoginServer string = acr.properties.loginServer
+
+@description('Output the name of the built image')
+output acrImageName string = acrTask.properties.step.imageNames[0]
+
+@description('Output the name of the task run')
+output acrTaskRunName string = acrTaskRun.name
