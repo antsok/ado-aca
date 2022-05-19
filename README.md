@@ -13,7 +13,7 @@
 - (if needed) change the subscription context with `az account set -n '<subscription name>'`
 - set resource group name with `RG_NAME=<resource group name>`
 - create resource group `az group create -l 'westeurope' -n $RG_NAME`
-- deploy ACR and build the image by running `ACR_URL=$(az deployment group create --resource-group $RG_NAME --template-file src/infra/acr.bicep --query "properties.outputs.acrLoginServer.value" -o tsv)`  and waiting for it to finish
+- deploy ACR and build the image by running `ACR_URL=$(az deployment group create --resource-group $RG_NAME --template-file src/infra/acr.bicep --query "properties.outputs.acrLoginServer.value" -o tsv)` and waiting for it to finish
   - image build logs can be checked with `az acr taskrun logs --name adoagent-taskrun --resource-group $RG_NAME --registry $ACR_URL`
   - image can be checked with `az acr repository show --name $ACR_URL --repository adoagent` and `az acr repository show-tags --name $ACR_URL --repository adoagent`
 - run `az deployment group create --resource-group $RG_NAME --template-file src/infra/aca.bicep --parameters azpUrl=https://dev.azure.com/<YourADOorganization> azpPool=<Agent-Pool-Name> azpToken=<PAT Token> containerCount=<number of agents>`
@@ -25,6 +25,6 @@
 
 An update of ADO agents image is done is two steps:
 
-1. Updating the image in the ACR, which can be triggered with `az acr task run --name adoagent-task --registry $ACR_URL` OR by redeploying the ACR (see the command in the "Initial Deployment" section above).
+1. Updating the image in the ACR, which can be triggered with `az acr task run --name adoagent-build-task --registry $ACR_URL` OR by redeploying the ACR (see the command in the "Initial Deployment" section above).
 
 2. Updating the agents pool with new image version is done by redeploying ACA (see command in the section above).
