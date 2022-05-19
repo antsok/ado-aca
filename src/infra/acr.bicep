@@ -57,6 +57,7 @@ resource acrTaskRun 'Microsoft.ContainerRegistry/registries/taskRuns@2019-06-01-
   parent: acr
   location: location
   properties: {
+    forceUpdateTag: 'true'
     runRequest: {
       type: 'TaskRunRequest'
       taskId: acrTask.id
