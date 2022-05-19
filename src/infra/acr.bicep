@@ -68,7 +68,7 @@ resource acrTask 'Microsoft.ContainerRegistry/registries/tasks@2019-06-01-previe
         name: 'adoagent-build-task-base-image-trigger'
         baseImageTriggerType: 'All'
         status: 'Enabled'
-      } : {}
+      } : null
       sourceTriggers: isTriggeredBySource ? [
         {
           name: 'adoagent-build-task-source-trigger'
@@ -80,10 +80,10 @@ resource acrTask 'Microsoft.ContainerRegistry/registries/tasks@2019-06-01-previe
             repositoryUrl: ghRepositoryUrl
             sourceControlType: 'Github'
             branch: 'main'
-            sourceControlAuthProperties: {
-              token: !empty(ghToken) ? ghToken : ''
+            sourceControlAuthProperties: !empty(ghToken) ? {
+              token:  ghToken
               tokenType: 'PAT'
-            }
+            } : null
           }
         }
       ] : []
