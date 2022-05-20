@@ -40,4 +40,5 @@ RUN curl -LsS https://vstsagentpackage.azureedge.net/agent/2.204.0/vsts-agent-li
 COPY ./start.sh .
 RUN chmod +x start.sh
 
+USER root
 ENTRYPOINT ["./start.sh"]
