@@ -6,6 +6,8 @@ param acrName string = 'adoagentsacr${uniqueString(resourceGroup().id)}'
 param imageVersion string = 'v1.0.0'
 param imageName string = 'adoagent'
 
+param laWorkspaceName string = 'ado-agents-la'
+
 @description('Cron config of daily image updates. Default: "0 4 * * *"')
 param cronSchedule string = '0 4 * * *'
 
@@ -21,6 +23,20 @@ param isTriggeredByBaseImage bool = false
 var fullImageName = '${imageName}:${imageVersion}'
 var ghRepositoryUrl = 'https://github.com/${ghUser}/${ghPath}'
 
+resource laWorkspace 'Microsoft.OperationalInsights/workspaces@2020-10-01' = {
+  name: laWorkspaceName
+  location: location
+  properties: {
+    sku: {
+      name: 'PerGB2018'
+    }
+    retentionInDays: 30
+    features: {
+      immediatePurgeDataOn30Days: true
+    }
+  }
+}
+
 resource acr 'Microsoft.ContainerRegistry/registries@2021-06-01-preview' = {
   name: acrName
   location: location
@@ -32,6 +48,20 @@ resource acr 'Microsoft.ContainerRegistry/registries@2021-06-01-preview' = {
   }
   identity: {
     type: 'SystemAssigned'
+  }
+}
+
+resource acrDiagnosticSettings 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
+  name: 'acrSendAllLogsToLogAnalytics'
+  scope: acr
+  properties: {
+    workspaceId: laWorkspace.id
+    logs: [
+      {
+        enabled: true
+        categoryGroup: 'allLogs'
+      }
+    ]
   }
 }
 
