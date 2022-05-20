@@ -28,8 +28,6 @@ fi
 
 export AGENT_ALLOW_RUNASROOT="1"
 
-exit 0
-
 cleanup() {
   if [ -e config.sh ]; then
     print_header "Cleanup. Removing Azure Pipelines agent..."
