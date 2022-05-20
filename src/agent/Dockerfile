@@ -35,6 +35,10 @@ ENV TARGETARCH=linux-x64
 
 WORKDIR /azp
 
+USER root
+RUN curl -LsS https://vstsagentpackage.azureedge.net/agent/2.204.0/vsts-agent-linux-x64-2.204.0.tar.gz | tar -xz --no-overwrite-dir & wait $!
+RUN chown -hR root:root /azp/*
+
 COPY ./start.sh .
 RUN chmod +x start.sh
 

@@ -52,24 +52,24 @@ print_header() {
 # Let the agent ignore the token env variables
 export VSO_AGENT_IGNORE=AZP_TOKEN,AZP_TOKEN_FILE
 
-print_header "1. Determining matching Azure Pipelines agent..."
+# print_header "1. Determining matching Azure Pipelines agent..."
 
-AZP_AGENT_PACKAGES=$(curl -LsS \
-    -u user:$(cat "$AZP_TOKEN_FILE") \
-    -H 'Accept:application/json;' \
-    "$AZP_URL/_apis/distributedtask/packages/agent?platform=$TARGETARCH&top=1")
+# AZP_AGENT_PACKAGES=$(curl -LsS \
+#     -u user:$(cat "$AZP_TOKEN_FILE") \
+#     -H 'Accept:application/json;' \
+#     "$AZP_URL/_apis/distributedtask/packages/agent?platform=$TARGETARCH&top=1")
 
-AZP_AGENT_PACKAGE_LATEST_URL=$(echo "$AZP_AGENT_PACKAGES" | jq -r '.value[0].downloadUrl')
+# AZP_AGENT_PACKAGE_LATEST_URL=$(echo "$AZP_AGENT_PACKAGES" | jq -r '.value[0].downloadUrl')
 
-if [ -z "$AZP_AGENT_PACKAGE_LATEST_URL" -o "$AZP_AGENT_PACKAGE_LATEST_URL" == "null" ]; then
-  echo 1>&2 "error: could not determine a matching Azure Pipelines agent"
-  echo 1>&2 "check that account '$AZP_URL' is correct and the token is valid for that account"
-  exit 1
-fi
+# if [ -z "$AZP_AGENT_PACKAGE_LATEST_URL" -o "$AZP_AGENT_PACKAGE_LATEST_URL" == "null" ]; then
+#   echo 1>&2 "error: could not determine a matching Azure Pipelines agent"
+#   echo 1>&2 "check that account '$AZP_URL' is correct and the token is valid for that account"
+#   exit 1
+# fi
 
-print_header "2. Downloading and extracting Azure Pipelines agent..."
+# print_header "2. Downloading and extracting Azure Pipelines agent..."
 
-curl -LsS $AZP_AGENT_PACKAGE_LATEST_URL | tar -xz --no-overwrite-dir & wait $!
+# curl -LsS $AZP_AGENT_PACKAGE_LATEST_URL | tar -xz --no-overwrite-dir & wait $!
 
 source ./env.sh
 
