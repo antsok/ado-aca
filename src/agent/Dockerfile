@@ -1,5 +1,7 @@
 FROM ubuntu:18.04
 
+USER root
+
 # To make it easier for build and release pipelines to run apt-get,
 # configure apt to not require confirmation (assume the -y argument by default)
 ENV DEBIAN_FRONTEND=noninteractive
@@ -40,5 +42,4 @@ RUN curl -LsS https://vstsagentpackage.azureedge.net/agent/2.204.0/vsts-agent-li
 COPY ./start.sh .
 RUN chmod +x start.sh
 
-USER root
 ENTRYPOINT ["./start.sh"]
