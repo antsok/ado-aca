@@ -1,6 +1,10 @@
 #!/bin/bash
 set -e
 
+echo "     I am " && id
+echo "    " && pwd
+echo "    " && ls -al
+
 if [ -z "$AZP_URL" ]; then
   echo 1>&2 "error: missing AZP_URL environment variable"
   exit 1
@@ -65,7 +69,7 @@ fi
 
 print_header "2. Downloading and extracting Azure Pipelines agent..."
 
-curl -LsS $AZP_AGENT_PACKAGE_LATEST_URL | tar -xz & wait $!
+curl -LsS $AZP_AGENT_PACKAGE_LATEST_URL | tar -xz -no-overwrite-dir & wait $!
 
 source ./env.sh
 
