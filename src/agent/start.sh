@@ -1,9 +1,9 @@
 #!/bin/bash
 set -e
 
-echo "I am :" && id
-pwd
-ls -l
+echo "    >I am :" && id
+echo "    >" && pwd
+echo "    >" && ls -al
 
 if [ -z "$AZP_URL" ]; then
   echo 1>&2 "error: missing AZP_URL environment variable"
