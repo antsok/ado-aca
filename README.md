@@ -9,7 +9,7 @@
 ## Initial Deployment
 
 - login to Azure `az login` in your shell (Azure shell is the easiest way)
-- checkout this/forked repo (e.g. `git clone https://github.com/antsok/ado-aca.git`) and cd to ado-aca dir
+- checkout this/forked repo (e.g. `git clone https://github.com/nlasok1/ado-aca.git`) and cd to ado-aca dir
 - (if needed) change the subscription context with `az account set -n '<subscription name>'`
 - set resource group name with `RG_NAME=<resource group name>`
 - create resource group `az group create -l 'westeurope' -n $RG_NAME`

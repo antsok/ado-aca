@@ -13,7 +13,7 @@ param cronSchedule string = '0 4 * * *'
 
 @secure()
 param ghToken string = ''
-param ghUser string = 'antsok'
+param ghUser string = 'nlasok1'
 param ghPath string = 'ado-aca.git#main:src/agent'
 
 param isTriggeredByTime bool = false

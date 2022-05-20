@@ -21,11 +21,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     software-properties-common \
   && rm -rf /var/lib/apt/lists/*
 
-RUN wget -q https://packages.microsoft.com/config/ubuntu/18.04/packages-microsoft-prod.deb
-RUN dpkg -i packages-microsoft-prod.deb
-RUN apt-get update
-RUN add-apt-repository universe
-RUN apt-get install -y --no-install-recommends powershell
+RUN wget -q https://packages.microsoft.com/config/ubuntu/18.04/packages-microsoft-prod.deb \
+    && dpkg -i packages-microsoft-prod.deb
+
+RUN apt-get update \
+    && add-apt-repository universe \
+    && apt-get install -y --no-install-recommends powershell
 
 RUN curl -LsS https://aka.ms/InstallAzureCLIDeb | bash \
   && rm -rf /var/lib/apt/lists/*
