@@ -2,6 +2,8 @@
 set -e
 
 echo "I am :" && id
+pwd
+ls -l
 
 if [ -z "$AZP_URL" ]; then
   echo 1>&2 "error: missing AZP_URL environment variable"
@@ -14,7 +16,7 @@ if [ -z "$AZP_TOKEN_FILE" ]; then
     exit 1
   fi
 
-  AZP_TOKEN_FILE=/azp/.token
+  AZP_TOKEN_FILE=~/.token
   echo -n $AZP_TOKEN > "$AZP_TOKEN_FILE"
 fi
 
@@ -57,8 +59,7 @@ AZP_AGENT_PACKAGES=$(curl -LsS \
     -H 'Accept:application/json;' \
     "$AZP_URL/_apis/distributedtask/packages/agent?platform=$TARGETARCH&top=1")
 
-AZP_AGENT_PACKAGE_LATEST_URL="https://vstsagentpackage.azureedge.net/agent/2.204.0/vsts-agent-linux-x64-2.204.0.tar.gz"
-#$(echo "$AZP_AGENT_PACKAGES" | jq -r '.value[0].downloadUrl')
+AZP_AGENT_PACKAGE_LATEST_URL=$(echo "$AZP_AGENT_PACKAGES" | jq -r '.value[0].downloadUrl')
 
 if [ -z "$AZP_AGENT_PACKAGE_LATEST_URL" -o "$AZP_AGENT_PACKAGE_LATEST_URL" == "null" ]; then
   echo 1>&2 "error: could not determine a matching Azure Pipelines agent"
