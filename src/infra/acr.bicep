@@ -39,7 +39,7 @@ resource laWorkspace 'Microsoft.OperationalInsights/workspaces@2020-10-01' = {
   }
 }
 
-resource acr 'Microsoft.ContainerRegistry/registries@2021-06-01-preview' = {
+resource acr 'Microsoft.ContainerRegistry/registries@2021-09-01' = {
   name: acrName
   location: location
   sku: {
@@ -67,7 +67,7 @@ resource acrDiagnosticSettings 'Microsoft.Insights/diagnosticSettings@2021-05-01
   }
 }
 
-resource acrTask 'Microsoft.ContainerRegistry/registries/tasks@2019-06-01-preview' = {
+resource acrTask 'Microsoft.ContainerRegistry/registries/tasks@2019-04-01' = {
   name: 'adoagent-build-task'
   parent: acr
   location: location
@@ -78,6 +78,7 @@ resource acrTask 'Microsoft.ContainerRegistry/registries/tasks@2019-06-01-previe
     }
     platform: {
       os: 'Linux'
+      architecture: 'amd64'
     }
     step: {
       type: 'Docker'
