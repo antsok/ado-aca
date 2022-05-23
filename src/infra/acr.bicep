@@ -20,6 +20,8 @@ param isTriggeredByTime bool = false
 param isTriggeredBySource bool = false
 param isTriggeredByBaseImage bool = false
 
+param forceUpdateTag string = utcNow('yyyyMMddHHmmss')
+
 var fullImageName = '${imageName}:${imageVersion}'
 var ghRepositoryUrl = 'https://github.com/${ghUser}/${ghPath}'
 
@@ -126,7 +128,7 @@ resource acrTaskRun 'Microsoft.ContainerRegistry/registries/taskRuns@2019-06-01-
   parent: acr
   location: location
   properties: {
-    forceUpdateTag: 'true'
+    forceUpdateTag: forceUpdateTag
     runRequest: {
       type: 'TaskRunRequest'
       taskId: acrTask.id
