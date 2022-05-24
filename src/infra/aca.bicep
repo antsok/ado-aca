@@ -7,6 +7,7 @@ param imageVersion string = 'v1.0.0'
 param imageName string = 'adoagent'
 
 param laWorkspaceName string = 'ado-agents-la'
+param appInsightsName string = 'ado-agents-appinsights'
 
 param containerAppEnvironmentName string = 'ado-agents-ce'
 param containerAppName string = 'ado-agents-ca'
@@ -34,14 +35,25 @@ var maxContainerCount = (experimentalScalingCount > 0 && experimentalScaling) ? 
 resource laWorkspace 'Microsoft.OperationalInsights/workspaces@2020-10-01' = {
   name: laWorkspaceName
   location: location
-  properties: {
+  properties: any({
     sku: {
       name: 'PerGB2018'
     }
     retentionInDays: 30
     features: {
       immediatePurgeDataOn30Days: true
+      searchVersion: 1
     }
+  })
+}
+
+resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
+  name: appInsightsName
+  location: location
+  kind: 'web'
+  properties: {
+    Application_Type: 'web'
+    WorkspaceResourceId:laWorkspace.id
   }
 }
 
@@ -49,6 +61,7 @@ resource containerAppEnvironment 'Microsoft.App/managedEnvironments@2022-01-01-p
   name: containerAppEnvironmentName
   location: location
   properties: {
+    daprAIInstrumentationKey: appInsights.properties.InstrumentationKey
     appLogsConfiguration: {
       destination: 'log-analytics'
       logAnalyticsConfiguration: {
