@@ -96,7 +96,7 @@ resource acrTask 'Microsoft.ContainerRegistry/registries/tasks@2019-04-01' = {
           name: 'adoagent-build-task-timer'
           schedule: cronSchedule
         }
-      ] : []
+      ] : null
       baseImageTrigger: isTriggeredByBaseImage ? {
         name: 'adoagent-build-task-base-image-trigger'
         baseImageTriggerType: 'All'
@@ -119,7 +119,7 @@ resource acrTask 'Microsoft.ContainerRegistry/registries/tasks@2019-04-01' = {
             } : null
           }
         }
-      ] : []
+      ] : null
     }
   }
 }
