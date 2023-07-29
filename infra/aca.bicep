@@ -78,11 +78,11 @@ resource acr 'Microsoft.ContainerRegistry/registries@2022-12-01' existing = {
   name: acrName
 }
 
-resource aca 'Microsoft.App/containerApps@2022-10-01' = {
+resource containerApp 'Microsoft.App/containerApps@2022-10-01' = if(!experimentalScaling) {
   name: containerAppName
   location: location
   properties:{
-    managedEnvironmentId: containerAppEnvironment.id
+    environmentId: containerAppEnvironment.id
     configuration:{
       activeRevisionsMode: multipleRevisions ? 'multiple' : 'single'
       registries:[
@@ -115,7 +115,7 @@ resource aca 'Microsoft.App/containerApps@2022-10-01' = {
       containers: [
         {
           name: 'ado-agent'
-          image: '${acrName}.azurecr.io/${fullImageName}'
+          image: '${acr.properties.loginServer}/${fullImageName}'
           resources: {
             cpu: 1
             memory: '2Gi'
@@ -140,6 +140,85 @@ resource aca 'Microsoft.App/containerApps@2022-10-01' = {
         minReplicas: minContainerCount
         maxReplicas: maxContainerCount
       }
+    }
+  }
+}
+
+resource containerJobInitial 'Microsoft.App/jobs@2023-04-01-preview' = if (experimentalScaling) {
+  name: containerAppName
+  location: location
+  identity: {
+    type: 'SystemAssigned'
+  }
+  properties: {
+    environmentId: containerAppEnvironment.id
+    configuration: {
+      replicaTimeout: 300
+      triggerType: 'Manual'
+      replicaRetryLimit: 1
+      manualTriggerConfig: {
+        replicaCompletionCount: 1
+        parallelism: 1
+      }
+      registries: [
+        {
+          server: acr.properties.loginServer
+          username: acr.name
+          passwordSecretRef: 'acr-password-ref'
+        }
+      ]
+      secrets: [
+        {
+          name: 'acr-password-ref'
+          value: acr.listCredentials().passwords[0].value
+        }
+        {
+          name: 'azp-url'
+          value: azpUrl
+        }
+        {
+          name: 'azp-token'
+          value: azpToken
+        }
+        {
+          name: 'azp-pool'
+          value: azpPool
+        }
+      ]
+    }
+    template: {
+      containers: [
+        {
+          name: 'ado-agent-placeholder'
+          image: '${acrName}.azurecr.io/${fullImageName}'
+          resources: {
+            cpu: 2
+            memory: '4Gi'
+          }
+          env: [
+            {
+              name: 'AZP_URL'
+              secretRef: 'azp-url'
+            }
+            {
+              name: 'AZP_TOKEN'
+              secretRef: 'azp-token'
+            }
+            {
+              name: 'AZP_POOL'
+              secretRef: 'azp-pool'
+            }
+            {
+              name: 'AZP_PLACEHOLDER'
+              value: '1'
+            }
+            {
+              name: 'AZP_AGENT_NAME'
+              value: 'ado-agent-placeholder'
+            }
+          ]
+        }
+      ]
     }
   }
 }

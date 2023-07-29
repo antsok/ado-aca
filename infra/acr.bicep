@@ -2,19 +2,31 @@ targetScope = 'resourceGroup'
 
 param location string = 'westeurope'
 
+@description('Name of the Azure Container Registry. Default: "adoagentsacr" + unique string')
 param acrName string = 'adoagentsacr${uniqueString(resourceGroup().id)}'
-param imageVersion string = 'v1.0.0'
+@description('Name of the image to build. Default: "adoagent"')
 param imageName string = 'adoagent'
+@description('Version of the image to build. Default: "v1.0.0"')
+param imageVersion string = 'v1.0.0'
 
-param laWorkspaceName string = 'ado-agents-la'
-
-@description('Cron config of daily image updates. Default: "0 4 * * *"')
-param cronSchedule string = '0 4 * * *'
 
 @secure()
+@description('GitHub personal access token with repo access. Default: ""')
 param ghToken string = ''
+@description('Github user or organization. Default: "antsok"')
+@minLength(1)
 param ghUser string = 'antsok'
-param ghPath string = 'ado-aca.git#main:src/agent'
+@description('GitHub repository name. Default: "ado-aca"')
+@minLength(1)
+param ghRepo string = 'ado-aca'
+@description('Branch to use for the source code. Default: "main"')
+@minLength(1)
+param ghBranch string = 'main'
+@description('Path to source code relative to the repository root. Default: "src/agent"')
+param ghPath string = 'src/agent'
+@description('Path to the Dockerfile relative to the context (ghPath). Default: "Dockerfile"')
+@minLength(1)
+param dockerFilePath string = experimentalScaling ? 'Dockerfile.autoscale' : 'Dockerfile'
 
 param isTriggeredByTime bool = false
 param isTriggeredBySource bool = false
@@ -22,8 +34,17 @@ param isTriggeredByBaseImage bool = false
 
 param forceUpdateTag string = utcNow('yyyyMMddHHmmss')
 
+param experimentalScaling bool = false
+
+param laWorkspaceName string = 'ado-agents-la'
+
+@description('Cron config of daily image updates. Default: "0 4 * * *"')
+param cronSchedule string = '0 4 * * *'
+
+
+var ghRepositoryContextUrl = 'https://github.com/${ghUser}/${ghRepo}.git#${ghBranch}:${ghPath}'
 var fullImageName = '${imageName}:${imageVersion}'
-var ghRepositoryUrl = 'https://github.com/${ghUser}/${ghPath}'
+
 
 resource laWorkspace 'Microsoft.OperationalInsights/workspaces@2020-10-01' = {
   name: laWorkspaceName
@@ -83,8 +104,8 @@ resource acrTask 'Microsoft.ContainerRegistry/registries/tasks@2019-04-01' = {
     step: {
       type: 'Docker'
       contextAccessToken: !empty(ghToken) ? ghToken : null
-      contextPath: ghRepositoryUrl
-      dockerFilePath: 'Dockerfile'
+      contextPath: ghRepositoryContextUrl
+      dockerFilePath: dockerFilePath
       imageNames:[
         fullImageName
       ]
@@ -110,7 +131,7 @@ resource acrTask 'Microsoft.ContainerRegistry/registries/tasks@2019-04-01' = {
             'commit'
           ]
           sourceRepository: {
-            repositoryUrl: ghRepositoryUrl
+            repositoryUrl: ghRepositoryContextUrl
             sourceControlType: 'Github'
             branch: 'main'
             sourceControlAuthProperties: !empty(ghToken) ? {
