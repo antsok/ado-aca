@@ -226,7 +226,7 @@ resource containerJobInitial 'Microsoft.App/jobs@2023-04-01-preview' = if (exper
 }
 
 resource containerJobScaling 'Microsoft.App/jobs@2023-04-01-preview' = if (experimentalScaling) {
-  name: containerAppName
+  name: '${containerAppName}-scaling'
   location: location
   identity: {
     type: 'SystemAssigned'
