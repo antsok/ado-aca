@@ -1,32 +1,30 @@
-FROM ubuntu:18.04
+FROM ubuntu:22.04
 
-# To make it easier for build and release pipelines to run apt-get,
-# configure apt to not require confirmation (assume the -y argument by default)
-ENV DEBIAN_FRONTEND=noninteractive
-RUN echo "APT::Get::Assume-Yes \"true\";" > /etc/apt/apt.conf.d/90assumeyes
+RUN apt-get update && apt-get upgrade
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get install -y --no-install-recommends \
     ca-certificates \
+    apt-transport-https \
+    lsb-release
+
+RUN apt-get install -y --no-install-recommends \
     curl \
+    wget \
+    libicu70 \
     jq \
     git \
     iputils-ping \
-    libcurl4 \
-    libicu60 \
-    libunwind8 \
-    netcat \
-    libssl1.0 \
-    apt-transport-https \
-    wget \
-    software-properties-common \
-  && rm -rf /var/lib/apt/lists/*
+    netcat
 
-RUN wget -q https://packages.microsoft.com/config/ubuntu/18.04/packages-microsoft-prod.deb
-RUN dpkg -i packages-microsoft-prod.deb
-RUN apt-get update
-RUN add-apt-repository universe
-RUN apt-get install -y --no-install-recommends powershell
+# Install latest powershell from Microsoft repo
+RUN curl -sSL https://packages.microsoft.com/keys/microsoft.asc | tee /etc/apt/trusted.gpg.d/microsoft.asc && \
+    wget -q https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb && \
+    dpkg -i packages-microsoft-prod.deb && rm packages-microsoft-prod.deb && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends powershell && \
+    rm -rf /var/lib/apt/lists/*
 
+# Install latest azure-cli
 RUN curl -LsS https://aka.ms/InstallAzureCLIDeb | bash \
   && rm -rf /var/lib/apt/lists/*
 
@@ -34,10 +32,6 @@ RUN curl -LsS https://aka.ms/InstallAzureCLIDeb | bash \
 ENV TARGETARCH=linux-x64
 
 WORKDIR /azp
-
-USER root
-RUN curl -LsS https://vstsagentpackage.azureedge.net/agent/2.202.1/vsts-agent-linux-x64-2.202.1.tar.gz | tar -xz --no-overwrite-dir & wait $!
-RUN chown -hR root:root /azp/*
 
 COPY ./start.sh .
 RUN chmod +x start.sh
