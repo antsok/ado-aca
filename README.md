@@ -13,10 +13,10 @@
 - (if needed) change the subscription context with `az account set -n '<subscription name>'`
 - set resource group name with `RG_NAME=<resource group name>`
 - create resource group `az group create -l 'westeurope' -n $RG_NAME`
-- deploy ACR and build the image by running `ACR_URL=$(az deployment group create --resource-group $RG_NAME --template-file src/infra/acr.bicep --query "properties.outputs.acrLoginServer.value" -o tsv)` and waiting for it to finish
+- deploy ACR and build the image by running `ACR_URL=$(az deployment group create --resource-group $RG_NAME --template-file infra/acr.bicep --query "properties.outputs.acrLoginServer.value" -o tsv)` and waiting for it to finish
   - image build logs can be checked with `az acr taskrun logs --name adoagent-taskrun --resource-group $RG_NAME --registry $ACR_URL`
   - image can be checked with `az acr repository show --name $ACR_URL --repository adoagent` and `az acr repository show-tags --name $ACR_URL --repository adoagent`
-- run `az deployment group create --resource-group $RG_NAME --template-file src/infra/aca.bicep --parameters azpUrl=https://dev.azure.com/<YourADOorganization> azpPool=<Agent-Pool-Name> azpToken=<PAT Token> containerCount=<number of agents>`
+- run `az deployment group create --resource-group $RG_NAME --template-file infra/aca.bicep --parameters azpUrl=https://dev.azure.com/<YourADOorganization> azpPool=<Agent-Pool-Name> azpToken=<PAT Token> containerCount=<number of agents>`
   - check if containers are provisioned with `az containerapp show -n ado-agents-ca -g $RG_NAME`
   - logs can be viewed with `az containerapp logs show -n ado-agents-ca -g $RG_NAME --follow true`
 - Check status of agents in a pool of your ADO project (`https://dev.azure.com/<YourADOorganization>/<YourADOproject>/_settings/agentqueues`)
