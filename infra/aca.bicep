@@ -144,8 +144,10 @@ resource containerApp 'Microsoft.App/containerApps@2022-10-01' = if(!experimenta
   }
 }
 
+// https://learn.microsoft.com/en-us/azure/container-apps/tutorial-ci-cd-runners-jobs?tabs=bash&pivots=container-apps-jobs-self-hosted-ci-cd-azure-pipelines
+
 resource containerJobInitial 'Microsoft.App/jobs@2023-04-01-preview' = if (experimentalScaling) {
-  name: containerAppName
+  name: '${containerAppName}-initial'
   location: location
   identity: {
     type: 'SystemAssigned'
@@ -215,6 +217,102 @@ resource containerJobInitial 'Microsoft.App/jobs@2023-04-01-preview' = if (exper
             {
               name: 'AZP_AGENT_NAME'
               value: 'ado-agent-placeholder'
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
+
+resource containerJobScaling 'Microsoft.App/jobs@2023-04-01-preview' = if (experimentalScaling) {
+  name: containerAppName
+  location: location
+  identity: {
+    type: 'SystemAssigned'
+  }
+  properties: {
+    environmentId: containerAppEnvironment.id
+    configuration: {
+      triggerType: 'Event'
+      replicaTimeout: 1800
+      replicaRetryLimit: 1
+      eventTriggerConfig: {
+        replicaCompletionCount: 1
+        parallelism: 1
+        scale: {
+          minExecutions: 0
+          maxExecutions: 10
+          pollingInterval: 30
+          rules: [
+            {
+              name: 'azure-pipelines'
+              type: 'azure-pipelines'
+              auth: [
+                {
+                  triggerParameter: 'personalAccessToken'
+                  secretRef: 'azp-token'
+                }
+                {
+                  triggerParameter: 'organizationURL'
+                  secretRef: 'azp-url'
+                }
+              ]
+              metadata: {
+                poolName: azpPool
+                //targetPipelinesQueueLength: '1'
+              }
+            }
+          ]
+        }
+      }
+      registries: [
+        {
+          server: acr.properties.loginServer
+          username: acr.name
+          passwordSecretRef: 'acr-password-ref'
+        }
+      ]
+      secrets: [
+        {
+          name: 'acr-password-ref'
+          value: acr.listCredentials().passwords[0].value
+        }
+        {
+          name: 'azp-url'
+          value: azpUrl
+        }
+        {
+          name: 'azp-token'
+          value: azpToken
+        }
+        {
+          name: 'azp-pool'
+          value: azpPool
+        }
+      ]
+    }
+    template: {
+      containers: [
+        {
+          name: 'ado-agent-scaling'
+          image: '${acrName}.azurecr.io/${fullImageName}'
+          resources: {
+            cpu: 2
+            memory: '4Gi'
+          }
+          env: [
+            {
+              name: 'AZP_URL'
+              secretRef: 'azp-url'
+            }
+            {
+              name: 'AZP_TOKEN'
+              secretRef: 'azp-token'
+            }
+            {
+              name: 'AZP_POOL'
+              secretRef: 'azp-pool'
             }
           ]
         }

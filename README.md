@@ -21,6 +21,10 @@
   - logs can be viewed with `az containerapp logs show -n ado-agents-ca -g $RG_NAME --follow true`
 - Check status of agents in a pool of your ADO project (`https://dev.azure.com/<YourADOorganization>/<YourADOproject>/_settings/agentqueues`)
 
+
+TODO: describe experimental scaling
+`az containerapp job start -n ado-agents-ca -g $RG_NAME`
+
 ## Update
 
 An update of ADO agents image is done is two steps:
