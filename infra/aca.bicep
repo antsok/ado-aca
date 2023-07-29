@@ -12,7 +12,11 @@ param appInsightsName string = 'ado-agents-appinsights'
 param containerAppEnvironmentName string = 'ado-agents-ce'
 param containerAppName string = 'ado-agents-ca'
 @minValue(1)
-param containerCount int = 1
+param containerMinCount int = 1
+param experimentalScaling bool = false
+@minValue(1)
+param containerMaxCount int = 1
+
 
 @secure()
 param azpUrl string
@@ -23,19 +27,17 @@ param azpPool string
 
 param multipleRevisions bool = false
 
-param experimentalScaling bool = false
-param experimentalScalingCount int = 0
 
 var fullImageName = '${imageName}:${imageVersion}'
 
-var minContainerCount = containerCount
-var maxContainerCount = (experimentalScalingCount > 0 && experimentalScaling) ? experimentalScalingCount : containerCount
+var minContainerCount = containerMinCount
+var maxContainerCount = (containerMaxCount > 0 && experimentalScaling) ? containerMaxCount : containerMinCount
 
 // Prepare
-resource laWorkspace 'Microsoft.OperationalInsights/workspaces@2020-10-01' = {
+resource laWorkspace 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
   name: laWorkspaceName
   location: location
-  properties: any({
+  properties: {
     sku: {
       name: 'PerGB2018'
     }
@@ -44,7 +46,7 @@ resource laWorkspace 'Microsoft.OperationalInsights/workspaces@2020-10-01' = {
       immediatePurgeDataOn30Days: true
       searchVersion: 1
     }
-  })
+  }
 }
 
 resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
@@ -53,11 +55,11 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
   kind: 'web'
   properties: {
     Application_Type: 'web'
-    WorkspaceResourceId:laWorkspace.id
+    WorkspaceResourceId: laWorkspace.id
   }
 }
 
-resource containerAppEnvironment 'Microsoft.App/managedEnvironments@2022-01-01-preview' = {
+resource containerAppEnvironment 'Microsoft.App/managedEnvironments@2022-10-01' = {
   name: containerAppEnvironmentName
   location: location
   properties: {
@@ -72,11 +74,11 @@ resource containerAppEnvironment 'Microsoft.App/managedEnvironments@2022-01-01-p
   }
 }
 
-resource acr 'Microsoft.ContainerRegistry/registries@2021-06-01-preview' existing = {
+resource acr 'Microsoft.ContainerRegistry/registries@2022-12-01' existing = {
   name: acrName
 }
 
-resource aca 'Microsoft.App/containerApps@2022-01-01-preview' = {
+resource aca 'Microsoft.App/containerApps@2022-10-01' = {
   name: containerAppName
   location: location
   properties:{
@@ -85,7 +87,7 @@ resource aca 'Microsoft.App/containerApps@2022-01-01-preview' = {
       activeRevisionsMode: multipleRevisions ? 'multiple' : 'single'
       registries:[
         {
-          server: '${acrName}.azurecr.io'
+          server: acr.properties.loginServer
           username: acr.name
           passwordSecretRef: 'acr-password-ref'
         }
@@ -137,28 +139,6 @@ resource aca 'Microsoft.App/containerApps@2022-01-01-preview' = {
       scale: {
         minReplicas: minContainerCount
         maxReplicas: maxContainerCount
-        rules: !experimentalScaling ? [] : [
-          {
-            name: 'cpu-scaling-rule'
-            custom: {
-              type: 'cpu'
-              metadata: {
-                type: 'Utilization'
-                value: '25'
-              }
-            }
-          }
-          {
-            name: 'memory-scaling-rule'
-            custom: {
-              type: 'memory'
-              metadata: {
-                type: 'Utilization'
-                value: '50'
-              }
-            }
-          }
-        ]
       }
     }
   }
