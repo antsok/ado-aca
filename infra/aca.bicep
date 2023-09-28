@@ -26,6 +26,9 @@ param azpToken string
 @secure()
 param azpPool string
 
+param baseTime string = utcNow('u')
+
+
 param multipleRevisions bool = false
 
 param laWorkspaceName string = 'ado-agents-app-la'
@@ -33,6 +36,8 @@ param appInsightsName string = 'ado-agents-app-appin'
 
 
 var fullImageName = '${imageName}:${imageVersion}'
+var cronExpression = '${dateTimeAdd(baseTime, 'PT5M', 'mm HH')} * * *'
+
 
 // Prepare
 resource laWorkspace 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
@@ -63,7 +68,7 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
   }
 }
 
-resource containerAppEnvironment 'Microsoft.App/managedEnvironments@2022-10-01' = {
+resource containerAppEnvironment 'Microsoft.App/managedEnvironments@2023-05-02-preview' = {
   name: containerAppEnvironmentName
   location: location
   sku:{
@@ -96,11 +101,11 @@ resource aceDiagnosticSettings 'Microsoft.Insights/diagnosticSettings@2021-05-01
   }
 }
 
-resource acr 'Microsoft.ContainerRegistry/registries@2022-12-01' existing = {
+resource acr 'Microsoft.ContainerRegistry/registries@2023-07-01' existing = {
   name: acrName
 }
 
-resource containerApp 'Microsoft.App/containerApps@2022-10-01' = if(!enableAutoscaling) {
+resource containerApp 'Microsoft.App/containerApps@2023-05-02-preview' = if(!enableAutoscaling) {
   name: containerAppName
   location: location
   identity: {
@@ -171,7 +176,7 @@ resource containerApp 'Microsoft.App/containerApps@2022-10-01' = if(!enableAutos
 
 // https://learn.microsoft.com/en-us/azure/container-apps/tutorial-ci-cd-runners-jobs?tabs=bash&pivots=container-apps-jobs-self-hosted-ci-cd-azure-pipelines
 
-resource containerJobInitial 'Microsoft.App/jobs@2023-04-01-preview' = if (enableAutoscaling) {
+resource containerJobInitial 'Microsoft.App/jobs@2023-05-02-preview' = if (enableAutoscaling) {
   name: '${containerAppName}-initial'
   location: location
   identity: {
@@ -181,12 +186,17 @@ resource containerJobInitial 'Microsoft.App/jobs@2023-04-01-preview' = if (enabl
     environmentId: containerAppEnvironment.id
     configuration: {
       replicaTimeout: 300
-      triggerType: 'Manual'
+      triggerType: 'Schedule' //'Manual'
       replicaRetryLimit: 1
-      manualTriggerConfig: {
+      scheduleTriggerConfig: {
+        cronExpression: cronExpression
         replicaCompletionCount: 1
         parallelism: 1
       }
+      // manualTriggerConfig: {
+      //   replicaCompletionCount: 1
+      //   parallelism: 1
+      // }
       registries: [
         {
           server: acr.properties.loginServer
@@ -250,7 +260,7 @@ resource containerJobInitial 'Microsoft.App/jobs@2023-04-01-preview' = if (enabl
   }
 }
 
-resource containerJobScaling 'Microsoft.App/jobs@2023-04-01-preview' = if (enableAutoscaling) {
+resource containerJobScaling 'Microsoft.App/jobs@2023-05-02-preview' = if (enableAutoscaling) {
   name: '${containerAppName}-scaling'
   location: location
   identity: {

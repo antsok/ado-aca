@@ -2,6 +2,8 @@ targetScope = 'subscription'
 
 param location string = 'westeurope'
 
+param rgName string = 'ado-aca-rg'
+
 param ghBranch string = 'main'
 
 @secure()
@@ -12,7 +14,7 @@ param azpToken string
 param azpPool string
 
 resource rg 'Microsoft.Resources/resourceGroups@2021-04-01' = {
-  name: 'name'
+  name: rgName
   location: location
 }
 
