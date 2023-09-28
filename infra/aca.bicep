@@ -6,17 +6,18 @@ param acrName string = 'adoagentsacr${uniqueString(resourceGroup().id)}'
 param imageVersion string = 'v1.0.0'
 param imageName string = 'adoagent'
 
-param laWorkspaceName string = 'ado-agents-la'
-param appInsightsName string = 'ado-agents-appinsights'
+param containerAppEnvironmentName string = 'ado-agents-ace'
+param containerAppName string = 'ado-agents-aca'
 
-param containerAppEnvironmentName string = 'ado-agents-ce'
-param containerAppName string = 'ado-agents-ca'
-@minValue(1)
-param containerMinCount int = 1
-param experimentalScaling bool = false
+@description('If to enable autoscaled agents functionality. If not, a static number of agent will be running.')
+param enableAutoscaling bool = true
+
+// @description('When autoscaling is not enabled, this is the number of containers that will be running.')
+// @minValue(1)
+// param containerMinCount int = 1
+@description('Number of containers to run. When autoscaling is enabled, this is the minimum number of containers to scale up to.')
 @minValue(1)
 param containerMaxCount int = 1
-
 
 @secure()
 param azpUrl string
@@ -27,16 +28,19 @@ param azpPool string
 
 param multipleRevisions bool = false
 
+param laWorkspaceName string = 'ado-agents-app-la'
+param appInsightsName string = 'ado-agents-app-appin'
+
 
 var fullImageName = '${imageName}:${imageVersion}'
-
-var minContainerCount = containerMinCount
-var maxContainerCount = (containerMaxCount > 0 && experimentalScaling) ? containerMaxCount : containerMinCount
 
 // Prepare
 resource laWorkspace 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
   name: laWorkspaceName
   location: location
+  identity:{
+    type: 'SystemAssigned'
+  }
   properties: {
     sku: {
       name: 'PerGB2018'
@@ -62,6 +66,9 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
 resource containerAppEnvironment 'Microsoft.App/managedEnvironments@2022-10-01' = {
   name: containerAppEnvironmentName
   location: location
+  sku:{
+    name: 'Consumption'
+  }
   properties: {
     daprAIInstrumentationKey: appInsights.properties.InstrumentationKey
     appLogsConfiguration: {
@@ -74,13 +81,31 @@ resource containerAppEnvironment 'Microsoft.App/managedEnvironments@2022-10-01' 
   }
 }
 
+resource aceDiagnosticSettings 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
+  name: 'acrSendAllLogsToLogAnalytics'
+  scope: containerAppEnvironment
+  properties: {
+    workspaceId: laWorkspace.id
+    logAnalyticsDestinationType: 'Dedicated'
+    logs: [
+      {
+        enabled: true
+        categoryGroup: 'allLogs'
+      }
+    ]
+  }
+}
+
 resource acr 'Microsoft.ContainerRegistry/registries@2022-12-01' existing = {
   name: acrName
 }
 
-resource containerApp 'Microsoft.App/containerApps@2022-10-01' = if(!experimentalScaling) {
+resource containerApp 'Microsoft.App/containerApps@2022-10-01' = if(!enableAutoscaling) {
   name: containerAppName
   location: location
+  identity: {
+    type: 'SystemAssigned'
+  }
   properties:{
     environmentId: containerAppEnvironment.id
     configuration:{
@@ -137,8 +162,8 @@ resource containerApp 'Microsoft.App/containerApps@2022-10-01' = if(!experimenta
         }
       ]
       scale: {
-        minReplicas: minContainerCount
-        maxReplicas: maxContainerCount
+        minReplicas: containerMaxCount
+        maxReplicas: containerMaxCount
       }
     }
   }
@@ -146,7 +171,7 @@ resource containerApp 'Microsoft.App/containerApps@2022-10-01' = if(!experimenta
 
 // https://learn.microsoft.com/en-us/azure/container-apps/tutorial-ci-cd-runners-jobs?tabs=bash&pivots=container-apps-jobs-self-hosted-ci-cd-azure-pipelines
 
-resource containerJobInitial 'Microsoft.App/jobs@2023-04-01-preview' = if (experimentalScaling) {
+resource containerJobInitial 'Microsoft.App/jobs@2023-04-01-preview' = if (enableAutoscaling) {
   name: '${containerAppName}-initial'
   location: location
   identity: {
@@ -225,7 +250,7 @@ resource containerJobInitial 'Microsoft.App/jobs@2023-04-01-preview' = if (exper
   }
 }
 
-resource containerJobScaling 'Microsoft.App/jobs@2023-04-01-preview' = if (experimentalScaling) {
+resource containerJobScaling 'Microsoft.App/jobs@2023-04-01-preview' = if (enableAutoscaling) {
   name: '${containerAppName}-scaling'
   location: location
   identity: {
@@ -242,7 +267,7 @@ resource containerJobScaling 'Microsoft.App/jobs@2023-04-01-preview' = if (exper
         parallelism: 1
         scale: {
           minExecutions: 0
-          maxExecutions: 10
+          maxExecutions: containerMaxCount
           pollingInterval: 30
           rules: [
             {
