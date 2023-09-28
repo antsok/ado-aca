@@ -27,6 +27,7 @@ param azpToken string
 param azpPool string
 
 param baseTime string = utcNow('u')
+param delayInterval string = 'PT10M'
 
 
 param multipleRevisions bool = false
@@ -36,7 +37,7 @@ param appInsightsName string = 'ado-agents-app-appin'
 
 
 var fullImageName = '${imageName}:${imageVersion}'
-var cronExpression = '${dateTimeAdd(baseTime, 'PT5M', 'mm HH')} * * *'
+var cronExpression = '${dateTimeAdd(baseTime, delayInterval, 'mm HH dd MM')} *'
 
 
 // Prepare

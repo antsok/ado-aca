@@ -23,7 +23,7 @@
 
 
 TODO: describe experimental scaling
-`az containerapp job start -n ado-agents-ca -g $RG_NAME`
+`az deployment sub create -n ado-aca -l westeurope --template-file infra/main.bicep --parameters azpUrl=<AZP_URL> azpPool=<AZP_POOL> azpToken=<AZP_TOKEN> ghBranch='2-add-autoscaling'`
 
 ## Update
 
