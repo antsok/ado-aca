@@ -15,7 +15,7 @@ param enableAutoscaling bool = true
 // @description('When autoscaling is not enabled, this is the number of containers that will be running.')
 // @minValue(1)
 // param containerMinCount int = 1
-@description('Number of containers to run. When autoscaling is enabled, this is the minimum number of containers to scale up to.')
+@description('Number of containers to run. When autoscaling is enabled, this is the maximum number of executions that can be started per polling interval.')
 @minValue(1)
 param containerMaxCount int = 1
 
@@ -71,9 +71,6 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
 resource containerAppEnvironment 'Microsoft.App/managedEnvironments@2023-05-02-preview' = {
   name: containerAppEnvironmentName
   location: location
-  sku:{
-    name: 'Consumption'
-  }
   properties: {
     daprAIInstrumentationKey: appInsights.properties.InstrumentationKey
     appLogsConfiguration: {

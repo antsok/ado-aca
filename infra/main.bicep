@@ -21,7 +21,7 @@ resource rg 'Microsoft.Resources/resourceGroups@2021-04-01' = {
 
 module acr 'acr.bicep' = {
   scope: rg
-  name: 'acr'
+  name: '${deployment().name}-acr'
   params: {
     location: location
     enableAutoscaling: true
@@ -31,7 +31,7 @@ module acr 'acr.bicep' = {
 
 module ace 'aca.bicep' = {
   scope: rg
-  name: 'aca'
+  name: '${deployment().name}-aca'
   params: {
     location: location
     azpPool: azpPool
