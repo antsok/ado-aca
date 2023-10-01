@@ -49,7 +49,7 @@ param isImageRebuildTriggeredByBaseImage bool = false
 param forceUpdateTag string = utcNow('yyyyMMddHHmmss')
 
 @description('Name of the Log Analytics workspace. Default: "ado-agents-la"')
-param laWorkspaceName string = 'ado-agents-infra-la'
+param laWorkspaceName string = 'ado-agents-infra-la-${uniqueString(resourceGroup().id)}'
 
 
 

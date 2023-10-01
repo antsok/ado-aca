@@ -6,7 +6,7 @@ param acrName string = 'adoagentsacr${uniqueString(resourceGroup().id)}'
 param imageVersion string = 'v1.0.0'
 param imageName string = 'adoagent'
 
-param containerAppEnvironmentName string = 'ado-agents-ace'
+param containerAppEnvironmentName string = 'ado-agents-ace-${uniqueString(resourceGroup().id)}'
 param containerAppName string = 'ado-agents-aca'
 
 @description('If to enable autoscaled agents functionality. If not, a static number of agent will be running.')
@@ -30,10 +30,8 @@ param baseTime string = utcNow('u')
 param delayInterval string = 'PT10M'
 
 
-param multipleRevisions bool = false
-
-param laWorkspaceName string = 'ado-agents-app-la'
-param appInsightsName string = 'ado-agents-app-appin'
+param laWorkspaceName string = 'ado-agents-app-la-${uniqueString(resourceGroup().id)}'
+param appInsightsName string = 'ado-agents-app-appin-${uniqueString(resourceGroup().id)}'
 
 
 var fullImageName = '${imageName}:${imageVersion}'
@@ -99,43 +97,55 @@ resource aceDiagnosticSettings 'Microsoft.Insights/diagnosticSettings@2021-05-01
   }
 }
 
+resource uami 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
+  name: 'acr-uami-${uniqueString(resourceGroup().id)}'
+  location: location
+}
+
 resource acr 'Microsoft.ContainerRegistry/registries@2023-07-01' existing = {
   name: acrName
+}
+
+// @description('This is the built-in AcrPull role. See https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#acrpull')
+// resource acrPullRoleDefinition 'Microsoft.Authorization/roleDefinitions@2022-04-01' existing = {
+//   scope: subscription()
+//   name: '7f951dda-4ed3-4680-a7ca-43fe172d538d'
+// }
+
+resource rbacAcrContainers 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(resourceGroup().id, uami.id, '7f951dda-4ed3-4680-a7ca-43fe172d538d')
+  scope: acr
+  properties: {
+    principalId: uami.properties.principalId
+    principalType: 'ServicePrincipal'
+    description: 'Allow ACR to pull images from ACR'
+    roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d')
+  }
 }
 
 resource containerApp 'Microsoft.App/containerApps@2023-05-02-preview' = if(!enableAutoscaling) {
   name: containerAppName
   location: location
   identity: {
-    type: 'SystemAssigned'
+    type:  'UserAssigned'
+    userAssignedIdentities: {
+      '${uami.id}': {}
+    }
   }
   properties:{
     environmentId: containerAppEnvironment.id
     configuration:{
-      activeRevisionsMode: multipleRevisions ? 'multiple' : 'single'
+      activeRevisionsMode: 'single'
       registries:[
         {
           server: acr.properties.loginServer
-          username: acr.name
-          passwordSecretRef: 'acr-password-ref'
+          identity: uami.id
         }
       ]
       secrets: [
         {
-          name: 'acr-password-ref'
-          value: acr.listCredentials().passwords[0].value
-        }
-        {
-          name: 'azp-url'
-          value: azpUrl
-        }
-        {
           name: 'azp-token'
           value: azpToken
-        }
-        {
-          name: 'azp-pool'
-          value: azpPool
         }
       ]
     }
@@ -151,7 +161,7 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-02-preview' = if(!ena
           env: [
             {
               name: 'AZP_URL'
-              secretRef: 'azp-url'
+              value: azpUrl
             }
             {
               name: 'AZP_TOKEN'
@@ -159,7 +169,7 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-02-preview' = if(!ena
             }
             {
               name: 'AZP_POOL'
-              secretRef: 'azp-pool'
+              value: azpPool
             }
           ]
         }
@@ -178,7 +188,10 @@ resource containerJobInitial 'Microsoft.App/jobs@2023-05-02-preview' = if (enabl
   name: '${containerAppName}-initial'
   location: location
   identity: {
-    type: 'SystemAssigned'
+    type:  'UserAssigned'
+    userAssignedIdentities: {
+      '${uami.id}': {}
+    }
   }
   properties: {
     environmentId: containerAppEnvironment.id
@@ -198,26 +211,13 @@ resource containerJobInitial 'Microsoft.App/jobs@2023-05-02-preview' = if (enabl
       registries: [
         {
           server: acr.properties.loginServer
-          username: acr.name
-          passwordSecretRef: 'acr-password-ref'
+          identity: uami.id
         }
       ]
       secrets: [
         {
-          name: 'acr-password-ref'
-          value: acr.listCredentials().passwords[0].value
-        }
-        {
-          name: 'azp-url'
-          value: azpUrl
-        }
-        {
           name: 'azp-token'
           value: azpToken
-        }
-        {
-          name: 'azp-pool'
-          value: azpPool
         }
       ]
     }
@@ -225,7 +225,7 @@ resource containerJobInitial 'Microsoft.App/jobs@2023-05-02-preview' = if (enabl
       containers: [
         {
           name: 'ado-agent-placeholder'
-          image: '${acrName}.azurecr.io/${fullImageName}'
+          image: '${acr.properties.loginServer}/${fullImageName}'
           resources: {
             cpu: 2
             memory: '4Gi'
@@ -233,7 +233,7 @@ resource containerJobInitial 'Microsoft.App/jobs@2023-05-02-preview' = if (enabl
           env: [
             {
               name: 'AZP_URL'
-              secretRef: 'azp-url'
+              value: azpUrl
             }
             {
               name: 'AZP_TOKEN'
@@ -241,7 +241,7 @@ resource containerJobInitial 'Microsoft.App/jobs@2023-05-02-preview' = if (enabl
             }
             {
               name: 'AZP_POOL'
-              secretRef: 'azp-pool'
+              value: azpPool
             }
             {
               name: 'AZP_PLACEHOLDER'
@@ -262,7 +262,10 @@ resource containerJobScaling 'Microsoft.App/jobs@2023-05-02-preview' = if (enabl
   name: '${containerAppName}-scaling'
   location: location
   identity: {
-    type: 'SystemAssigned'
+    type:  'UserAssigned'
+    userAssignedIdentities: {
+      '${uami.id}': {}
+    }
   }
   properties: {
     environmentId: containerAppEnvironment.id
@@ -276,7 +279,7 @@ resource containerJobScaling 'Microsoft.App/jobs@2023-05-02-preview' = if (enabl
         scale: {
           minExecutions: 0
           maxExecutions: containerMaxCount
-          pollingInterval: 30
+          pollingInterval: 15
           rules: [
             {
               name: 'azure-pipelines'
@@ -302,15 +305,10 @@ resource containerJobScaling 'Microsoft.App/jobs@2023-05-02-preview' = if (enabl
       registries: [
         {
           server: acr.properties.loginServer
-          username: acr.name
-          passwordSecretRef: 'acr-password-ref'
+          identity: uami.id
         }
       ]
       secrets: [
-        {
-          name: 'acr-password-ref'
-          value: acr.listCredentials().passwords[0].value
-        }
         {
           name: 'azp-url'
           value: azpUrl
@@ -319,17 +317,13 @@ resource containerJobScaling 'Microsoft.App/jobs@2023-05-02-preview' = if (enabl
           name: 'azp-token'
           value: azpToken
         }
-        {
-          name: 'azp-pool'
-          value: azpPool
-        }
       ]
     }
     template: {
       containers: [
         {
           name: 'ado-agent-scaling'
-          image: '${acrName}.azurecr.io/${fullImageName}'
+          image: '${acr.properties.loginServer}/${fullImageName}'
           resources: {
             cpu: 2
             memory: '4Gi'
@@ -337,7 +331,7 @@ resource containerJobScaling 'Microsoft.App/jobs@2023-05-02-preview' = if (enabl
           env: [
             {
               name: 'AZP_URL'
-              secretRef: 'azp-url'
+              value: azpUrl
             }
             {
               name: 'AZP_TOKEN'
@@ -345,7 +339,7 @@ resource containerJobScaling 'Microsoft.App/jobs@2023-05-02-preview' = if (enabl
             }
             {
               name: 'AZP_POOL'
-              secretRef: 'azp-pool'
+              value: azpPool
             }
           ]
         }
