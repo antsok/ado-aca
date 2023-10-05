@@ -23,10 +23,11 @@ If you want to use your own GitHub instead of the original repo (https://github.
 
 First, initialize AZP_URL, AZP_POOL, and AZP_TOKEN environment variables with the information from the Preparation phase. For example,
 ```
-AZP_URL='https://dev.azure.com/organization/'
-AZP_POOL='ado-aca'
-AZP_TOKEN='yourverysecretstring'
+AZP_URL='https://dev.azure.com/<organization>'
+AZP_POOL='<agent-pool-name>'
+AZP_TOKEN='<yourverysecretstring>'
 ```
+Note, the AZP_URL parameter value should not end with a forward slash '/'.
 
 Next, set up subscription name to use with Azure deployments.
 ```
@@ -34,8 +35,8 @@ SUB_NAME='<subscription name>'
 ```
 
 and initialize your Azure environment context
-- login to Azure with, if not already 
-- select your subscription 
+- login to Azure with, if not already
+- select your subscription
 
 ```
 az login
@@ -46,36 +47,33 @@ Now, if you are using the original GitHub repository, deploy the solution with t
 
 ```
 DEPLOYMENT_LOCATION='westeurope'
-DEPLOYMENT_NAME='ado-aca'
-GH_BRANCH='2-add-autoscaling'
+DEPLOYMENT_NAME='adoaca'
+RG_NAME='ado-aca-rg'
 
-az deployment sub create -n $DEPLOYMENT_NAME -l $DEPLOYMENT_LOCATION --template-file infra/main.bicep --parameters azpUrl=$AZP_URL azpPool=$AZP_POOL azpToken=$AZP_TOKEN ghBranch=$GH_BRANCH
+az deployment sub create -n $DEPLOYMENT_NAME -l $DEPLOYMENT_LOCATION --template-file infra/main.bicep --parameters location=$DEPLOYMENT_LOCATION rgName=$RG_NAME azpUrl=$AZP_URL azpPool=$AZP_POOL azpToken=$AZP_TOKEN
 ```
 
-Some parameters are needed if you are not using the original GitHub repo
+Some parameters are needed if you are not using the original GitHub repo:
+
 ```
-tbd
+GITHUB_USER='antsok'
+GITHUB_REPO='ado-aca'
+GITHUB_BRANCH='2-add-autoscaling'
+GITHUB_TOKEN=''
+
+az deployment sub create -n $DEPLOYMENT_NAME -l $DEPLOYMENT_LOCATION --template-file infra/main.bicep --parameters location=$DEPLOYMENT_LOCATION rgName=$RG_NAME azpUrl=$AZP_URL azpPool=$AZP_POOL azpToken=$AZP_TOKEN ghUser=$GITHUB_USER ghRepo=$GITHUB_REPO ghBranch=$GITHUB_BRANCH ghToken=$GITHUB_TOKEN
+
 ```
+
+Other available parameters for further customizations are: imageName, imageVersion.
 
 After the solution is deployed into Azure, give it approx 10 minutes to make an initialization of your ADO Pool. Check status of agents in the ADO pool. There shold be 'ado-agent-placeholder' agent in Idle status and Enabled.
 
 ### Troubleshooting
 
-Old text to rework:
-```
-
-- deploy ACR and build the image by running `ACR_URL=$(az deployment group create --resource-group $RG_NAME --template-file infra/acr.bicep --query "properties.outputs.acrLoginServer.value" -o tsv)` and waiting for it to finish
-  - image build logs can be checked with `az acr taskrun logs --name adoagent-taskrun --resource-group $RG_NAME --registry $ACR_URL`
-  - image can be checked with `az acr repository show --name $ACR_URL --repository adoagent` and `az acr repository show-tags --name $ACR_URL --repository adoagent`
-- run `az deployment group create --resource-group $RG_NAME --template-file infra/aca.bicep --parameters azpUrl=https://dev.azure.com/<YourADOorganization> azpPool=<Agent-Pool-Name> azpToken=<PAT Token> containerCount=<number of agents>`
-  - check if containers are provisioned with `az containerapp show -n ado-agents-ca -g $RG_NAME`
-  - logs can be viewed with `az containerapp logs show -n ado-agents-ca -g $RG_NAME --follow true`
-```
-
-
-
-
+- image build logs can be checked with `az acr taskrun logs --name adoagent-taskrun --resource-group $RG_NAME --registry <Registry URL>`
+- image can be checked with `az acr repository show --name <Registry URL> --repository adoagent` and `az acr repository show-tags --name <Registry URL> --repository adoagent`
 
 ## Update
 
-Updating the agents pool with new image version is done by running the solution deployment again.
+Updating the agents pool with new image version is done by running the solution deployment and providing the new image version in 'imageVersion' parameter.

@@ -6,16 +6,16 @@ param acrName string = 'adoagentsacr${uniqueString(resourceGroup().id)}'
 param imageVersion string = 'v1.0.0'
 param imageName string = 'adoagent'
 
-param containerAppEnvironmentName string = 'ado-agents-ace-${uniqueString(resourceGroup().id)}'
-param containerAppName string = 'ado-agents-aca'
+param containerAppEnvironmentName string = 'adoagents-ace-${uniqueString(resourceGroup().id)}'
+param containerAppName string = 'adoagents-aca'
 
-@description('If to enable autoscaled agents functionality. If not, a static number of agent will be running.')
+@description('If to enable autoscaled agents functionality. If not, a static number of agent will be running. Default: true')
 param enableAutoscaling bool = true
 
 // @description('When autoscaling is not enabled, this is the number of containers that will be running.')
 // @minValue(1)
 // param containerMinCount int = 1
-@description('Number of containers to run. When autoscaling is enabled, this is the maximum number of executions that can be started per polling interval.')
+@description('Number of containers to run. When autoscaling is enabled, this is the maximum number of executions that can be started per polling interval. Default: 1')
 @minValue(1)
 param containerMaxCount int = 1
 
@@ -30,8 +30,8 @@ param baseTime string = utcNow('u')
 param delayInterval string = 'PT10M'
 
 
-param laWorkspaceName string = 'ado-agents-app-la-${uniqueString(resourceGroup().id)}'
-param appInsightsName string = 'ado-agents-app-appin-${uniqueString(resourceGroup().id)}'
+param laWorkspaceName string = 'adoagents-app-la-${uniqueString(resourceGroup().id)}'
+param appInsightsName string = 'adoagents-app-appin-${uniqueString(resourceGroup().id)}'
 
 
 var fullImageName = '${imageName}:${imageVersion}'
@@ -124,10 +124,10 @@ resource rbacAcrContainers 'Microsoft.Authorization/roleAssignments@2022-04-01' 
 }
 
 resource containerApp 'Microsoft.App/containerApps@2023-05-02-preview' = if(!enableAutoscaling) {
-  name: containerAppName
+  name: take('${containerAppName}-${uniqueString(resourceGroup().id)}',32)
   location: location
   identity: {
-    type:  'UserAssigned'
+    type:  'SystemAssigned,UserAssigned'
     userAssignedIdentities: {
       '${uami.id}': {}
     }
@@ -185,10 +185,10 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-02-preview' = if(!ena
 // https://learn.microsoft.com/en-us/azure/container-apps/tutorial-ci-cd-runners-jobs?tabs=bash&pivots=container-apps-jobs-self-hosted-ci-cd-azure-pipelines
 
 resource containerJobInitial 'Microsoft.App/jobs@2023-05-02-preview' = if (enableAutoscaling) {
-  name: '${containerAppName}-initial'
+  name: take('${containerAppName}-init-${uniqueString(resourceGroup().id)}',32)
   location: location
   identity: {
-    type:  'UserAssigned'
+    type:  'SystemAssigned,UserAssigned'
     userAssignedIdentities: {
       '${uami.id}': {}
     }
@@ -259,10 +259,10 @@ resource containerJobInitial 'Microsoft.App/jobs@2023-05-02-preview' = if (enabl
 }
 
 resource containerJobScaling 'Microsoft.App/jobs@2023-05-02-preview' = if (enableAutoscaling) {
-  name: '${containerAppName}-scaling'
+  name: take('${containerAppName}-scale-${uniqueString(resourceGroup().id)}',32)
   location: location
   identity: {
-    type:  'UserAssigned'
+    type:  'SystemAssigned,UserAssigned'
     userAssignedIdentities: {
       '${uami.id}': {}
     }
@@ -324,6 +324,9 @@ resource containerJobScaling 'Microsoft.App/jobs@2023-05-02-preview' = if (enabl
         {
           name: 'ado-agent-scaling'
           image: '${acr.properties.loginServer}/${fullImageName}'
+          args: [
+            '--once'
+          ]
           resources: {
             cpu: 2
             memory: '4Gi'

@@ -11,9 +11,6 @@ param imageName string = 'adoagent'
 @description('Version of the image to build. Default: "v1.0.0"')
 param imageVersion string = 'v1.0.0'
 
-@description('Enable autoscaling of agents. Default: true.')
-param enableAutoscaling bool = true
-
 @secure()
 @description('GitHub personal access token with repo access. Default: ""')
 param ghToken string = ''
@@ -53,7 +50,7 @@ param laWorkspaceName string = 'ado-agents-infra-la-${uniqueString(resourceGroup
 
 
 
-var dockerFilePath = enableAutoscaling ? 'Dockerfile.autoscale' : 'Dockerfile'
+var dockerFilePath = 'Dockerfile'
 var ghRepositoryContextUrl = 'https://github.com/${ghUser}/${ghRepo}.git#${ghBranch}:${ghPath}'
 var fullImageName = '${imageName}:${imageVersion}'
 
@@ -79,7 +76,7 @@ resource acr 'Microsoft.ContainerRegistry/registries@2023-07-01' = {
     name: 'Basic'
   }
   properties: {
-    adminUserEnabled: true
+    adminUserEnabled: false
   }
   identity: {
     type: 'SystemAssigned'
