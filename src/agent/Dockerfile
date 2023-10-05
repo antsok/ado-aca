@@ -1,13 +1,13 @@
 FROM ubuntu:22.04
 
-RUN apt-get update && apt-get upgrade
+RUN apt-get update && apt-get upgrade -y
 
-RUN apt-get install -y --no-install-recommends \
+RUN apt-get install -y -qq --no-install-recommends \
     ca-certificates \
     apt-transport-https \
     lsb-release
 
-RUN apt-get install -y --no-install-recommends \
+RUN apt-get install -y -qq --no-install-recommends \
     curl \
     wget \
     libicu70 \

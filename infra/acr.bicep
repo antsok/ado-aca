@@ -2,30 +2,60 @@ targetScope = 'resourceGroup'
 
 param location string = 'westeurope'
 
+@description('Name of the Azure Container Registry. Default: "adoagentsacr" + unique string')
 param acrName string = 'adoagentsacr${uniqueString(resourceGroup().id)}'
-param imageVersion string = 'v1.0.0'
+
+@description('Name of the image to build. Default: "adoagent"')
 param imageName string = 'adoagent'
 
-param laWorkspaceName string = 'ado-agents-la'
-
-@description('Cron config of daily image updates. Default: "0 4 * * *"')
-param cronSchedule string = '0 4 * * *'
+@description('Version of the image to build. Default: "v1.0.0"')
+param imageVersion string = 'v1.0.0'
 
 @secure()
+@description('GitHub personal access token with repo access. Default: ""')
 param ghToken string = ''
+
+@description('Github user or organization. Default: "antsok"')
+@minLength(1)
 param ghUser string = 'antsok'
-param ghPath string = 'ado-aca.git#main:src/agent'
 
-param isTriggeredByTime bool = false
-param isTriggeredBySource bool = false
-param isTriggeredByBaseImage bool = false
+@description('GitHub repository name. Default: "ado-aca"')
+@minLength(1)
+param ghRepo string = 'ado-aca'
 
+@description('Branch to use for the source code. Default: "main"')
+@minLength(1)
+param ghBranch string = 'main'
+
+@description('Path to agent\'s Dockerfile relative to the repository root. Default: "src/agent"')
+param ghPath string = 'src/agent'
+
+@description('Should agents image be rebuilt on schedule. Default: false')
+param isImageRebuildTriggeredByTime bool = false
+
+@description('Cron config of image rebuild. Default: "0 4 * * *"')
+param cronSchedule string = '0 4 * * *'
+
+@description('Should agents image be rebuilt when source files change. Default: false')
+param isImageRebuildTriggeredBySource bool = false
+
+@description('Should agents image be rebuilt when base image changes. Default: false')
+param isImageRebuildTriggeredByBaseImage bool = false
+
+@description('A parameter to force image update. Should not be used.')
 param forceUpdateTag string = utcNow('yyyyMMddHHmmss')
 
-var fullImageName = '${imageName}:${imageVersion}'
-var ghRepositoryUrl = 'https://github.com/${ghUser}/${ghPath}'
+@description('Name of the Log Analytics workspace. Default: "ado-agents-la"')
+param laWorkspaceName string = 'ado-agents-infra-la-${uniqueString(resourceGroup().id)}'
 
-resource laWorkspace 'Microsoft.OperationalInsights/workspaces@2020-10-01' = {
+
+
+var dockerFilePath = 'Dockerfile'
+var ghRepositoryContextUrl = 'https://github.com/${ghUser}/${ghRepo}.git#${ghBranch}:${ghPath}'
+var fullImageName = '${imageName}:${imageVersion}'
+
+
+resource laWorkspace 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
   name: laWorkspaceName
   location: location
   properties: {
@@ -39,14 +69,14 @@ resource laWorkspace 'Microsoft.OperationalInsights/workspaces@2020-10-01' = {
   }
 }
 
-resource acr 'Microsoft.ContainerRegistry/registries@2021-09-01' = {
+resource acr 'Microsoft.ContainerRegistry/registries@2023-07-01' = {
   name: acrName
   location: location
   sku: {
     name: 'Basic'
   }
   properties: {
-    adminUserEnabled: true
+    adminUserEnabled: false
   }
   identity: {
     type: 'SystemAssigned'
@@ -58,6 +88,7 @@ resource acrDiagnosticSettings 'Microsoft.Insights/diagnosticSettings@2021-05-01
   scope: acr
   properties: {
     workspaceId: laWorkspace.id
+    logAnalyticsDestinationType: 'Dedicated'
     logs: [
       {
         enabled: true
@@ -67,7 +98,7 @@ resource acrDiagnosticSettings 'Microsoft.Insights/diagnosticSettings@2021-05-01
   }
 }
 
-resource acrTask 'Microsoft.ContainerRegistry/registries/tasks@2019-04-01' = {
+resource acrTask 'Microsoft.ContainerRegistry/registries/tasks@2019-06-01-preview' = {
   name: 'adoagent-build-task'
   parent: acr
   location: location
@@ -83,26 +114,26 @@ resource acrTask 'Microsoft.ContainerRegistry/registries/tasks@2019-04-01' = {
     step: {
       type: 'Docker'
       contextAccessToken: !empty(ghToken) ? ghToken : null
-      contextPath: ghRepositoryUrl
-      dockerFilePath: 'Dockerfile'
+      contextPath: ghRepositoryContextUrl
+      dockerFilePath: dockerFilePath
       imageNames:[
         fullImageName
       ]
       isPushEnabled: true
     }
     trigger: {
-      timerTriggers: isTriggeredByTime ? [
+      timerTriggers: isImageRebuildTriggeredByTime ? [
         {
           name: 'adoagent-build-task-timer'
           schedule: cronSchedule
         }
       ] : null
-      baseImageTrigger: isTriggeredByBaseImage ? {
+      baseImageTrigger: isImageRebuildTriggeredByBaseImage ? {
         name: 'adoagent-build-task-base-image-trigger'
         baseImageTriggerType: 'All'
         status: 'Enabled'
       } : null
-      sourceTriggers: isTriggeredBySource ? [
+      sourceTriggers: isImageRebuildTriggeredBySource ? [
         {
           name: 'adoagent-build-task-source-trigger'
           sourceTriggerEvents: [
@@ -110,9 +141,9 @@ resource acrTask 'Microsoft.ContainerRegistry/registries/tasks@2019-04-01' = {
             'commit'
           ]
           sourceRepository: {
-            repositoryUrl: ghRepositoryUrl
+            repositoryUrl: ghRepositoryContextUrl
             sourceControlType: 'Github'
-            branch: 'main'
+            branch: ghBranch
             sourceControlAuthProperties: !empty(ghToken) ? {
               token:  ghToken
               tokenType: 'PAT'
@@ -137,6 +168,9 @@ resource acrTaskRun 'Microsoft.ContainerRegistry/registries/taskRuns@2019-06-01-
     }
   }
 }
+
+@description('Output the name of the ACR')
+output acrName string = acr.name
 
 @description('Output the login server property for later use')
 output acrLoginServer string = acr.properties.loginServer
