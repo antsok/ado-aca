@@ -37,6 +37,22 @@ resource vnet 'Microsoft.Network/virtualNetworks@2023-05-01' = if(usePrivateNetw
         vnetPrefix
       ]
     }
+    subnets:[
+      {
+        name: 'endpoints-subnet'
+        properties:{
+          addressPrefix: cidrSubnet(vnetPrefix, parseCidr(vnetPrefix).cidr+1, 0)
+          privateEndpointNetworkPolicies: 'Disabled'
+          privateLinkServiceNetworkPolicies: 'Enabled'      
+        }
+      }
+      {
+        name: 'containers-subnet'
+        properties:{
+          addressPrefix: cidrSubnet(vnetPrefix, parseCidr(vnetPrefix).cidr+1, 1)
+        }
+      }
+    ]
   }
 }
 
@@ -83,4 +99,11 @@ output laWorkspaceId string = laWorkspace.id
 output laWorkspaceName string = laWorkspace.name
 output vnetId string = usePrivateNetwork ? vnet.id : ''
 output vnetName string = usePrivateNetwork ? vnet.name : ''
+output subnets object = usePrivateNetwork ? {
+  endpoints : {
+    name: vnet.properties.subnets[0].name
+    id: vnet.properties.subnets[0].id
+    addressPrefix: vnet.properties.subnets[0].properties.addressPrefix
+  }
+ } : {}
 output acrPrivateDnsZoneId string = usePrivateNetwork ? acrPrivateDnsZone.id : ''

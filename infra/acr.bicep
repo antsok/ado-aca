@@ -54,8 +54,8 @@ param usePrivateNetwork bool = true
 @description('Name of the virtual network. Default: "ado-agents-infra-vnet"')
 param vnetName string = 'ado-agents-infra-vnet'
 
-@allowed([0,1])
-param subnetIndex int = 0
+@description('Name of the subnet for private endpoints. Default: "endpoints-subnet"')
+param subnetName string = 'endpoints-subnet'
 
 var dockerFilePath = 'Dockerfile'
 var ghRepositoryContextUrl = 'https://github.com/${ghUser}/${ghRepo}.git#${ghBranch}:${ghPath}'
@@ -64,6 +64,16 @@ var fullImageName = '${imageName}:${imageVersion}'
 resource laWorkspace 'Microsoft.OperationalInsights/workspaces@2022-10-01' existing = {
   name: laWorkspaceName
 }
+
+resource vnet 'Microsoft.Network/virtualNetworks@2023-05-01' existing = if (usePrivateNetwork) {
+  name: vnetName
+}
+
+resource subnetPrivateEndpoints 'Microsoft.Network/virtualNetworks/subnets@2023-05-01' existing = if (usePrivateNetwork) {
+  parent: vnet
+  name: subnetName
+}
+
 
 resource acr 'Microsoft.ContainerRegistry/registries@2023-07-01' = {
   name: acrName
@@ -95,6 +105,10 @@ resource acrDiagnosticSettings 'Microsoft.Insights/diagnosticSettings@2021-05-01
         enabled: true
         categoryGroup: 'allLogs'
       }
+      {
+        enabled: true
+        categoryGroup: 'audit'
+      }
     ]
     metrics: [
       {
@@ -105,15 +119,28 @@ resource acrDiagnosticSettings 'Microsoft.Insights/diagnosticSettings@2021-05-01
   }
 }
 
+resource acrTaskPool 'Microsoft.ContainerRegistry/registries/agentPools@2019-06-01-preview' = if (usePrivateNetwork) {
+  name: 'vnetpool'
+  parent: acr
+  location: location
+  properties: {
+    virtualNetworkSubnetResourceId: subnetPrivateEndpoints.id
+    count: 1
+    os: 'Linux'
+    tier: 'S1'
+  }
+}
+
 resource acrTask 'Microsoft.ContainerRegistry/registries/tasks@2019-06-01-preview' = {
   name: 'adoagent-build-task'
   parent: acr
   location: location
   properties: {
     status: 'Enabled'
-    agentConfiguration: {
+    agentPoolName: usePrivateNetwork ? acrTaskPool.name : null
+    agentConfiguration: !usePrivateNetwork ? {
       cpu: 2
-    }
+    } : null
     platform: {
       os: 'Linux'
       architecture: 'amd64'
@@ -173,20 +200,6 @@ resource acrTaskRun 'Microsoft.ContainerRegistry/registries/taskRuns@2019-06-01-
       taskId: acrTask.id
       isArchiveEnabled: false
     }
-  }
-}
-
-resource vnet 'Microsoft.Network/virtualNetworks@2023-05-01' existing = if (usePrivateNetwork) {
-  name: vnetName
-}
-
-resource subnetPrivateEndpoints 'Microsoft.Network/virtualNetworks/subnets@2023-05-01' = if (usePrivateNetwork) {
-  parent: vnet
-  name: 'endpoints-subnet'
-  properties: {
-    addressPrefix: cidrSubnet(vnet.properties.addressSpace.addressPrefixes[0], parseCidr(vnet.properties.addressSpace.addressPrefixes[0]).cidr+1, subnetIndex)
-    privateEndpointNetworkPolicies: 'Disabled'
-    privateLinkServiceNetworkPolicies: 'Enabled'
   }
 }
 

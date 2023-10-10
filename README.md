@@ -52,6 +52,11 @@ RG_NAME='ado-aca-rg'
 
 az deployment sub create -n $DEPLOYMENT_NAME -l $DEPLOYMENT_LOCATION --template-file infra/main.bicep --parameters location=$DEPLOYMENT_LOCATION rgName=$RG_NAME azpUrl=$AZP_URL azpPool=$AZP_POOL azpToken=$AZP_TOKEN
 ```
+Or
+```
+az stack sub create --dm None --delete-all --yes --name $DEPLOYMENT_NAME -l $DEPLOYMENT_LOCATION --template-file infra/main.bicep --parameters location=$DEPLOYMENT_LOCATION rgName=$RG_NAME azpUrl=$AZP_URL azpPool=$AZP_POOL azpToken=$AZP_TOKEN
+
+```
 
 Some parameters are needed if you are not using the original GitHub repo:
 

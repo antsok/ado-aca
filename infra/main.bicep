@@ -71,7 +71,7 @@ module acr 'acr.bicep' = {
     laWorkspaceName: shared.outputs.laWorkspaceName
     usePrivateNetwork: usePrivateNetwork
     vnetName: shared.outputs.vnetName
-    subnetIndex: 0
+    subnetName: shared.outputs.subnets.endpoints.name
     ghUser: ghUser
     ghRepo: ghRepo
     ghBranch: ghBranch
