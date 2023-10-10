@@ -29,6 +29,15 @@ param azpPool string
 param baseTime string = utcNow('u')
 param delayInterval string = 'PT10M'
 
+@description('Whether to use a private network for the solution. Default: true')
+param usePrivateNetwork bool = true
+
+@description('Name of the virtual network. Default: "ado-agents-infra-vnet"')
+param vnetName string = 'ado-agents-infra-vnet'
+
+@description('Name of the subnet for private endpoints. Default: "endpoints-subnet"')
+param subnetName string = 'containers-subnet'
+
 
 param laWorkspaceName string = 'adoagents-app-la-${uniqueString(resourceGroup().id)}'
 param appInsightsName string = 'adoagents-app-appin-${uniqueString(resourceGroup().id)}'
@@ -39,24 +48,20 @@ var cronExpression = '${dateTimeAdd(baseTime, delayInterval, 'mm HH dd MM')} *'
 
 
 // Prepare
-resource laWorkspace 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
+resource laWorkspace 'Microsoft.OperationalInsights/workspaces@2022-10-01' existing = {
   name: laWorkspaceName
-  location: location
-  identity:{
-    type: 'SystemAssigned'
-  }
-  properties: {
-    sku: {
-      name: 'PerGB2018'
-    }
-    retentionInDays: 30
-    features: {
-      immediatePurgeDataOn30Days: true
-      searchVersion: 1
-    }
-  }
 }
 
+resource vnet 'Microsoft.Network/virtualNetworks@2023-05-01' existing = if (usePrivateNetwork) {
+  name: vnetName
+}
+
+resource subnetContainers 'Microsoft.Network/virtualNetworks/subnets@2023-05-01' existing = if (usePrivateNetwork) {
+  parent: vnet
+  name: subnetName
+}
+
+// App Insights
 resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
   name: appInsightsName
   location: location
@@ -64,6 +69,9 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
   properties: {
     Application_Type: 'web'
     WorkspaceResourceId: laWorkspace.id
+    //DisableLocalAuth: usePrivateNetwork
+    //publicNetworkAccessForIngestion: usePrivateNetwork ? 'Disabled' : 'Enabled'
+    //publicNetworkAccessForQuery: usePrivateNetwork ? 'Disabled' : 'Enabled'
   }
 }
 
@@ -79,6 +87,17 @@ resource containerAppEnvironment 'Microsoft.App/managedEnvironments@2023-05-02-p
         sharedKey: laWorkspace.listKeys().primarySharedKey
       }
     }
+    workloadProfiles: usePrivateNetwork ? [
+      {
+        name: 'Consumption'
+        workloadProfileType: 'Consumption'
+      }
+    ] : null
+    vnetConfiguration: usePrivateNetwork ? {
+      infrastructureSubnetId: subnetContainers.id
+      internal: true
+    } : null
+    zoneRedundant: false
   }
 }
 
@@ -134,6 +153,7 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-02-preview' = if(!ena
   }
   properties:{
     environmentId: containerAppEnvironment.id
+    workloadProfileName: usePrivateNetwork ? 'Consumption' : null
     configuration:{
       activeRevisionsMode: 'single'
       registries:[
@@ -155,8 +175,8 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-02-preview' = if(!ena
           name: 'ado-agent'
           image: '${acr.properties.loginServer}/${fullImageName}'
           resources: {
-            cpu: 1
-            memory: '2Gi'
+            cpu: 2
+            memory: '4Gi'
           }
           env: [
             {
@@ -195,6 +215,7 @@ resource containerJobInitial 'Microsoft.App/jobs@2023-05-02-preview' = if (enabl
   }
   properties: {
     environmentId: containerAppEnvironment.id
+    workloadProfileName: usePrivateNetwork ? 'Consumption' : null
     configuration: {
       replicaTimeout: 300
       triggerType: 'Schedule' //'Manual'
@@ -269,6 +290,7 @@ resource containerJobScaling 'Microsoft.App/jobs@2023-05-02-preview' = if (enabl
   }
   properties: {
     environmentId: containerAppEnvironment.id
+    workloadProfileName: usePrivateNetwork ? 'Consumption' : null
     configuration: {
       triggerType: 'Event'
       replicaTimeout: 1800
