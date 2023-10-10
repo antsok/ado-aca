@@ -153,6 +153,7 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-02-preview' = if(!ena
   }
   properties:{
     environmentId: containerAppEnvironment.id
+    workloadProfileName: usePrivateNetwork ? 'Consumption' : null
     configuration:{
       activeRevisionsMode: 'single'
       registries:[
@@ -174,8 +175,8 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-02-preview' = if(!ena
           name: 'ado-agent'
           image: '${acr.properties.loginServer}/${fullImageName}'
           resources: {
-            cpu: 1
-            memory: '2Gi'
+            cpu: 2
+            memory: '4Gi'
           }
           env: [
             {
