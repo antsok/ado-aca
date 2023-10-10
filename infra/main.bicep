@@ -7,6 +7,15 @@ param location string = 'westeurope'
 @description('The name of the resource group')
 param rgName string = 'adoaca-rg'
 
+@description('Whether to use a private network for the solution. Default: true')
+param usePrivateNetwork bool = true
+
+// Container Apps parameters
+@description('Whether to enable autoscaling for the container apps. Default: true')
+param enableAutoscaling bool = true
+
+// ADO agent image parameters
+
 @description('Name of the image to build. Default: "adoagent"')
 param imageName string = 'adoagent'
 
@@ -43,12 +52,26 @@ resource rg 'Microsoft.Resources/resourceGroups@2021-04-01' = {
   location: location
 }
 
+module shared 'shared.bicep' = {
+  scope: rg
+  name: '${deployment().name}-shared'
+  params: {
+    location: location
+    usePrivateNetwork: usePrivateNetwork
+    vnetPrefix: '10.100.0.0/24'
+  }
+}
+
 // Deploy Azure Container Registry that builds the ADO agent image
 module acr 'acr.bicep' = {
   scope: rg
   name: '${deployment().name}-acr'
   params: {
     location: location
+    laWorkspaceName: shared.outputs.laWorkspaceName
+    usePrivateNetwork: usePrivateNetwork
+    vnetName: shared.outputs.vnetName
+    subnetIndex: 0
     ghUser: ghUser
     ghRepo: ghRepo
     ghBranch: ghBranch
@@ -64,11 +87,11 @@ module ace 'aca.bicep' = {
   name: '${deployment().name}-aca'
   params: {
     location: location
-    enableAutoscaling: true
+    enableAutoscaling: enableAutoscaling
     azpUrl: azpUrl
     azpPool: azpPool
     azpToken: azpToken
-    acrName: acr.outputs.acrName
+    acrName: acr.outputs.name
     imageName: imageName
     imageVersion: imageVersion
   }
