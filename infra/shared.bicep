@@ -24,6 +24,8 @@ resource laWorkspace 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
     retentionInDays: 30
     features: {
       immediatePurgeDataOn30Days: true
+      enableDataExport: !usePrivateNetwork
+      //TODO disableLocalAuth: usePrivateNetwork
     }
   }
 }
@@ -50,6 +52,16 @@ resource vnet 'Microsoft.Network/virtualNetworks@2023-05-01' = if(usePrivateNetw
         name: 'containers-subnet'
         properties:{
           addressPrefix: cidrSubnet(vnetPrefix, parseCidr(vnetPrefix).cidr+1, 1)
+          privateEndpointNetworkPolicies: 'Enabled'
+          privateLinkServiceNetworkPolicies: 'Enabled'
+          delegations: [
+            {
+              name: 'Microsoft.App.environments'
+              properties: {
+                serviceName: 'Microsoft.App/environments'
+              }
+            }
+          ]
         }
       }
     ]
@@ -104,6 +116,11 @@ output subnets object = usePrivateNetwork ? {
     name: vnet.properties.subnets[0].name
     id: vnet.properties.subnets[0].id
     addressPrefix: vnet.properties.subnets[0].properties.addressPrefix
+  }
+  containers : {
+    name: vnet.properties.subnets[1].name
+    id: vnet.properties.subnets[1].id
+    addressPrefix: vnet.properties.subnets[1].properties.addressPrefix
   }
  } : {}
 output acrPrivateDnsZoneId string = usePrivateNetwork ? acrPrivateDnsZone.id : ''

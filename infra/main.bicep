@@ -88,6 +88,10 @@ module ace 'aca.bicep' = {
   params: {
     location: location
     enableAutoscaling: enableAutoscaling
+    laWorkspaceName: shared.outputs.laWorkspaceName
+    usePrivateNetwork: usePrivateNetwork
+    vnetName: shared.outputs.vnetName
+    subnetName: shared.outputs.subnets.containers.name
     azpUrl: azpUrl
     azpPool: azpPool
     azpToken: azpToken

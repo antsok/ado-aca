@@ -11,6 +11,9 @@ param imageName string = 'adoagent'
 @description('Version of the image to build. Default: "v1.0.0"')
 param imageVersion string = 'v1.0.0'
 
+@description('Should the image built be skipped. Default: false')
+param skipImageBuild bool = false
+
 @secure()
 @description('GitHub personal access token with repo access. Default: ""')
 param ghToken string = ''
@@ -189,7 +192,7 @@ resource acrTask 'Microsoft.ContainerRegistry/registries/tasks@2019-06-01-previe
   }
 }
 
-resource acrTaskRun 'Microsoft.ContainerRegistry/registries/taskRuns@2019-06-01-preview' = {
+resource acrTaskRun 'Microsoft.ContainerRegistry/registries/taskRuns@2019-06-01-preview' = if (!skipImageBuild) {
   name: 'adoagent-taskrun'
   parent: acr
   location: location
