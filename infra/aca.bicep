@@ -12,6 +12,9 @@ param containerAppName string = 'adoagents-aca'
 @description('If to enable autoscaled agents functionality. If not, a static number of agent will be running. Default: true')
 param enableAutoscaling bool = true
 
+@description('In addition to AAD, should it also be possible to use local auth. Default: false')
+param useLocalAuthenticationOptions bool = false
+
 // @description('When autoscaling is not enabled, this is the number of containers that will be running.')
 // @minValue(1)
 // param containerMinCount int = 1
@@ -69,7 +72,7 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
   properties: {
     Application_Type: 'web'
     WorkspaceResourceId: laWorkspace.id
-    //DisableLocalAuth: usePrivateNetwork
+    //DisableLocalAuth: !useLocalAuthenticationOptions
     //publicNetworkAccessForIngestion: usePrivateNetwork ? 'Disabled' : 'Enabled'
     //publicNetworkAccessForQuery: usePrivateNetwork ? 'Disabled' : 'Enabled'
   }
@@ -79,9 +82,9 @@ resource containerAppEnvironment 'Microsoft.App/managedEnvironments@2023-05-02-p
   name: containerAppEnvironmentName
   location: location
   properties: {
-    daprAIInstrumentationKey: appInsights.properties.InstrumentationKey
+    daprAIInstrumentationKey: appInsights.properties.InstrumentationKey  // this needs local auth
     appLogsConfiguration: {
-      destination: 'log-analytics'
+      destination: 'log-analytics' // this needs local auth
       logAnalyticsConfiguration: {
         customerId: laWorkspace.properties.customerId
         sharedKey: laWorkspace.listKeys().primarySharedKey
@@ -157,7 +160,11 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-02-preview' = if(!ena
     configuration:{
       activeRevisionsMode: 'single'
       registries:[
-        {
+        useLocalAuthenticationOptions ? {
+          server: acr.properties.loginServer
+          username: 'acr-username'
+          passwordSecretRef: 'acr-password'
+        } : {
           server: acr.properties.loginServer
           identity: uami.id
         }
@@ -167,6 +174,14 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-02-preview' = if(!ena
           name: 'azp-token'
           value: azpToken
         }
+        useLocalAuthenticationOptions ? {
+          name: 'acr-username'
+          value: acr.listCredentials().username      
+        } : {}        
+        useLocalAuthenticationOptions ? {
+          name: 'acr-password'
+          value: acr.listCredentials().passwords[0].value        
+        } : {}
       ]
     }
     template: {
@@ -230,7 +245,11 @@ resource containerJobInitial 'Microsoft.App/jobs@2023-05-02-preview' = if (enabl
       //   parallelism: 1
       // }
       registries: [
-        {
+        useLocalAuthenticationOptions ? {
+          server: acr.properties.loginServer
+          username: 'acr-username'
+          passwordSecretRef: 'acr-password'
+        } : {
           server: acr.properties.loginServer
           identity: uami.id
         }
@@ -240,6 +259,14 @@ resource containerJobInitial 'Microsoft.App/jobs@2023-05-02-preview' = if (enabl
           name: 'azp-token'
           value: azpToken
         }
+        useLocalAuthenticationOptions ? {
+          name: 'acr-username'
+          value: acr.listCredentials().username      
+        } : {}        
+        useLocalAuthenticationOptions ? {
+          name: 'acr-password'
+          value: acr.listCredentials().passwords[0].value        
+        } : {}
       ]
     }
     template: {
@@ -325,7 +352,11 @@ resource containerJobScaling 'Microsoft.App/jobs@2023-05-02-preview' = if (enabl
         }
       }
       registries: [
-        {
+        useLocalAuthenticationOptions ? {
+          server: acr.properties.loginServer
+          username: 'acr-username'
+          passwordSecretRef: 'acr-password'
+        } : {
           server: acr.properties.loginServer
           identity: uami.id
         }
@@ -339,6 +370,14 @@ resource containerJobScaling 'Microsoft.App/jobs@2023-05-02-preview' = if (enabl
           name: 'azp-token'
           value: azpToken
         }
+        useLocalAuthenticationOptions ? {
+          name: 'acr-username'
+          value: acr.listCredentials().username      
+        } : {}        
+        useLocalAuthenticationOptions ? {
+          name: 'acr-password'
+          value: acr.listCredentials().passwords[0].value        
+        } : {}
       ]
     }
     template: {

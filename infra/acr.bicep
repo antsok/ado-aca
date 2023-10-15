@@ -60,6 +60,9 @@ param vnetName string = 'ado-agents-infra-vnet'
 @description('Name of the subnet for private endpoints. Default: "endpoints-subnet"')
 param subnetName string = 'endpoints-subnet'
 
+@description('In addition to AAD, should it also be possible to use local auth. Default: false')
+param useLocalAuthenticationOptions bool = false
+
 var dockerFilePath = 'Dockerfile'
 var ghRepositoryContextUrl = 'https://github.com/${ghUser}/${ghRepo}.git#${ghBranch}:${ghPath}'
 var fullImageName = '${imageName}:${imageVersion}'
@@ -88,7 +91,7 @@ resource acr 'Microsoft.ContainerRegistry/registries@2023-07-01' = {
     name: usePrivateNetwork ? 'Premium' : 'Basic'
   }
   properties: {
-    adminUserEnabled: false
+    adminUserEnabled: useLocalAuthenticationOptions
     publicNetworkAccess: usePrivateNetwork ? 'Disabled' : 'Enabled'
     networkRuleBypassOptions: usePrivateNetwork ? 'None' : 'AzureServices'
     networkRuleSet:{

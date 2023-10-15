@@ -10,6 +10,9 @@ param rgName string = 'adoaca-rg'
 @description('Whether to use a private network for the solution. Default: true')
 param usePrivateNetwork bool = true
 
+@description('In addition to AAD, should it also be possible to use local auth. Default: false')
+param useLocalAuthenticationOptions bool = false
+
 // Container Apps parameters
 @description('Whether to enable autoscaling for the container apps. Default: true')
 param enableAutoscaling bool = true
@@ -59,6 +62,7 @@ module shared 'shared.bicep' = {
     location: location
     usePrivateNetwork: usePrivateNetwork
     vnetPrefix: '10.100.0.0/24'
+    useLocalAuthenticationOptions: useLocalAuthenticationOptions
   }
 }
 
@@ -69,6 +73,7 @@ module acr 'acr.bicep' = {
   params: {
     location: location
     laWorkspaceName: shared.outputs.laWorkspaceName
+    useLocalAuthenticationOptions: useLocalAuthenticationOptions
     usePrivateNetwork: usePrivateNetwork
     vnetName: shared.outputs.vnetName
     subnetName: shared.outputs.subnets.endpoints.name
@@ -89,6 +94,7 @@ module ace 'aca.bicep' = {
     location: location
     enableAutoscaling: enableAutoscaling
     laWorkspaceName: shared.outputs.laWorkspaceName
+    useLocalAuthenticationOptions: useLocalAuthenticationOptions
     usePrivateNetwork: usePrivateNetwork
     vnetName: shared.outputs.vnetName
     subnetName: shared.outputs.subnets.containers.name
