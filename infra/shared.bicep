@@ -14,6 +14,9 @@ param vnetName string = 'ado-agents-infra-vnet'
 @description('Address prefix of the virtual network. Default: 10.0.0.0/24 ')
 param vnetPrefix string = '10.0.0.0/24'
 
+@description('In addition to AAD, should it also be possible to use local auth. Default: false')
+param useLocalAuthenticationOptions bool = false
+
 resource laWorkspace 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
   name: laWorkspaceName
   location: location
@@ -24,8 +27,8 @@ resource laWorkspace 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
     retentionInDays: 30
     features: {
       immediatePurgeDataOn30Days: true
-      enableDataExport: !usePrivateNetwork
-      //TODO disableLocalAuth: usePrivateNetwork
+      enableDataExport: false
+      disableLocalAuth: !useLocalAuthenticationOptions
     }
   }
 }
