@@ -5,6 +5,10 @@
 
 ## Minimum requirements
 The solutions requires: Azure, and Azure DevOps. Optionally, you might want to use your own GitHub repo.
+
+Tools:
+- Azure CLI, v2.53 and later
+
 ## Preparation
 
 You need to make two preparations in your Azure DevOps to enable the build agents that this repo creates
@@ -82,3 +86,7 @@ After the solution is deployed into Azure, give it approx 10 minutes to make an 
 ## Update
 
 Updating the agents pool with new image version is done by running the solution deployment and providing the new image version in 'imageVersion' parameter.
+
+## Removing
+
+`az stack sub delete --name $DEPLOYMENT_NAME --delete-all --yes`
