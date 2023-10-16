@@ -72,7 +72,7 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
   properties: {
     Application_Type: 'web'
     WorkspaceResourceId: laWorkspace.id
-    //DisableLocalAuth: !useLocalAuthenticationOptions
+    DisableLocalAuth: !useLocalAuthenticationOptions
     //publicNetworkAccessForIngestion: usePrivateNetwork ? 'Disabled' : 'Enabled'
     //publicNetworkAccessForQuery: usePrivateNetwork ? 'Disabled' : 'Enabled'
   }
@@ -160,11 +160,7 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-02-preview' = if(!ena
     configuration:{
       activeRevisionsMode: 'single'
       registries:[
-        useLocalAuthenticationOptions ? {
-          server: acr.properties.loginServer
-          username: 'acr-username'
-          passwordSecretRef: 'acr-password'
-        } : {
+        {
           server: acr.properties.loginServer
           identity: uami.id
         }
@@ -174,14 +170,6 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-02-preview' = if(!ena
           name: 'azp-token'
           value: azpToken
         }
-        useLocalAuthenticationOptions ? {
-          name: 'acr-username'
-          value: acr.listCredentials().username      
-        } : {}        
-        useLocalAuthenticationOptions ? {
-          name: 'acr-password'
-          value: acr.listCredentials().passwords[0].value        
-        } : {}
       ]
     }
     template: {
@@ -245,11 +233,7 @@ resource containerJobInitial 'Microsoft.App/jobs@2023-05-02-preview' = if (enabl
       //   parallelism: 1
       // }
       registries: [
-        useLocalAuthenticationOptions ? {
-          server: acr.properties.loginServer
-          username: 'acr-username'
-          passwordSecretRef: 'acr-password'
-        } : {
+        {
           server: acr.properties.loginServer
           identity: uami.id
         }
@@ -259,14 +243,6 @@ resource containerJobInitial 'Microsoft.App/jobs@2023-05-02-preview' = if (enabl
           name: 'azp-token'
           value: azpToken
         }
-        useLocalAuthenticationOptions ? {
-          name: 'acr-username'
-          value: acr.listCredentials().username      
-        } : {}        
-        useLocalAuthenticationOptions ? {
-          name: 'acr-password'
-          value: acr.listCredentials().passwords[0].value        
-        } : {}
       ]
     }
     template: {
@@ -352,11 +328,7 @@ resource containerJobScaling 'Microsoft.App/jobs@2023-05-02-preview' = if (enabl
         }
       }
       registries: [
-        useLocalAuthenticationOptions ? {
-          server: acr.properties.loginServer
-          username: 'acr-username'
-          passwordSecretRef: 'acr-password'
-        } : {
+        {
           server: acr.properties.loginServer
           identity: uami.id
         }
@@ -370,14 +342,6 @@ resource containerJobScaling 'Microsoft.App/jobs@2023-05-02-preview' = if (enabl
           name: 'azp-token'
           value: azpToken
         }
-        useLocalAuthenticationOptions ? {
-          name: 'acr-username'
-          value: acr.listCredentials().username      
-        } : {}        
-        useLocalAuthenticationOptions ? {
-          name: 'acr-password'
-          value: acr.listCredentials().passwords[0].value        
-        } : {}
       ]
     }
     template: {
