@@ -7,7 +7,7 @@
 The solutions requires: Azure, and Azure DevOps. Optionally, you might want to use your own GitHub repo.
 
 Tools:
-- Azure CLI, v2.53 and later
+- Azure CLI, v2.61 and later
 
 ## Preparation
 
@@ -19,14 +19,14 @@ You need to make two preparations in your Azure DevOps to enable the build agent
 
 - create new Agent pool (under 'https://dev.azure.com/organization/_settings/agentpools') of 'Self-hosted' type, and note down its name.
 
-If you want to use your own GitHub instead of the original repo (https://github.com/antsok/ado-aca.git), fork the 'ado-aca' repository to your GitHub repo, and make it available to be conected from your Azure environment.
+If you want to use your own GitHub instead of the original repo (https://github.com/antsok/ado-aca.git), fork the 'ado-aca' repository to your GitHub repo, and make it available to be connected from your Azure environment.
 
 ## Initial Deployment
 
 >The instructions below are for Azure CLI and bash shell, with repo root folder as the working folder.
 
 First, initialize AZP_URL, AZP_POOL, and AZP_TOKEN environment variables with the information from the Preparation phase. For example,
-```
+```bash
 AZP_URL='https://dev.azure.com/<organization>'
 AZP_POOL='<agent-pool-name>'
 AZP_TOKEN='<yourverysecretstring>'
@@ -34,7 +34,7 @@ AZP_TOKEN='<yourverysecretstring>'
 Note, the AZP_URL parameter value should not end with a forward slash '/'.
 
 Next, set up subscription name to use with Azure deployments.
-```
+```bash
 SUB_NAME='<subscription name>'
 ```
 
@@ -42,14 +42,14 @@ and initialize your Azure environment context
 - login to Azure with, if not already
 - select your subscription
 
-```
+```bash
 az login
 az account set -n $SUB_NAME
 ```
 
 Now, if you are using the original GitHub repository, deploy the solution with the following command:
 
-```
+```bash
 DEPLOYMENT_LOCATION='westeurope'
 DEPLOYMENT_NAME='adoaca'
 RG_NAME='ado-aca-rg'
@@ -57,17 +57,21 @@ RG_NAME='ado-aca-rg'
 az deployment sub create -n $DEPLOYMENT_NAME -l $DEPLOYMENT_LOCATION --template-file infra/main.bicep --parameters location=$DEPLOYMENT_LOCATION rgName=$RG_NAME azpUrl=$AZP_URL azpPool=$AZP_POOL azpToken=$AZP_TOKEN
 ```
 Or
-```
-az stack sub create --dm None --delete-all --yes --name $DEPLOYMENT_NAME -l $DEPLOYMENT_LOCATION --template-file infra/main.bicep --parameters location=$DEPLOYMENT_LOCATION rgName=$RG_NAME azpUrl=$AZP_URL azpPool=$AZP_POOL azpToken=$AZP_TOKEN
+```bash
+DEPLOYMENT_LOCATION='westeurope'
+DEPLOYMENT_NAME='adoaca'
+RG_NAME='ado-aca-rg'
+
+az stack sub create --action-on-unmanage deleteAll --deny-settings-mode None --yes --name $DEPLOYMENT_NAME -l $DEPLOYMENT_LOCATION --template-file infra/main.bicep --parameters location=$DEPLOYMENT_LOCATION rgName=$RG_NAME azpUrl=$AZP_URL azpPool=$AZP_POOL azpToken=$AZP_TOKEN
 
 ```
 
 Some parameters are needed if you are not using the original GitHub repo:
 
-```
+```bash
 GITHUB_USER='antsok'
 GITHUB_REPO='ado-aca'
-GITHUB_BRANCH='2-add-autoscaling'
+GITHUB_BRANCH='main'
 GITHUB_TOKEN=''
 
 az deployment sub create -n $DEPLOYMENT_NAME -l $DEPLOYMENT_LOCATION --template-file infra/main.bicep --parameters location=$DEPLOYMENT_LOCATION rgName=$RG_NAME azpUrl=$AZP_URL azpPool=$AZP_POOL azpToken=$AZP_TOKEN ghUser=$GITHUB_USER ghRepo=$GITHUB_REPO ghBranch=$GITHUB_BRANCH ghToken=$GITHUB_TOKEN
@@ -89,4 +93,4 @@ Updating the agents pool with new image version is done by running the solution 
 
 ## Removing
 
-`az stack sub delete --name $DEPLOYMENT_NAME --delete-all --yes`
+`az stack sub delete --name $DEPLOYMENT_NAME --action-on-unmanage deleteAll --yes`

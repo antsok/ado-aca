@@ -78,9 +78,12 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
   }
 }
 
-resource containerAppEnvironment 'Microsoft.App/managedEnvironments@2023-05-02-preview' = {
+resource containerAppEnvironment 'Microsoft.App/managedEnvironments@2023-11-02-preview' = {
   name: containerAppEnvironmentName
   location: location
+  identity: {
+    type: 'SystemAssigned'
+  }
   properties: {
     daprAIInstrumentationKey: appInsights.properties.InstrumentationKey  // this needs local auth
     appLogsConfiguration: {
@@ -145,7 +148,7 @@ resource rbacAcrContainers 'Microsoft.Authorization/roleAssignments@2022-04-01' 
   }
 }
 
-resource containerApp 'Microsoft.App/containerApps@2023-05-02-preview' = if(!enableAutoscaling) {
+resource containerApp 'Microsoft.App/containerApps@2023-11-02-preview' = if(!enableAutoscaling) {
   name: take('${containerAppName}-${uniqueString(resourceGroup().id)}',32)
   location: location
   identity: {
@@ -207,7 +210,7 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-02-preview' = if(!ena
 
 // https://learn.microsoft.com/en-us/azure/container-apps/tutorial-ci-cd-runners-jobs?tabs=bash&pivots=container-apps-jobs-self-hosted-ci-cd-azure-pipelines
 
-resource containerJobInitial 'Microsoft.App/jobs@2023-05-02-preview' = if (enableAutoscaling) {
+resource containerJobInitial 'Microsoft.App/jobs@2023-11-02-preview' = if (enableAutoscaling) {
   name: take('${containerAppName}-init-${uniqueString(resourceGroup().id)}',32)
   location: location
   identity: {
@@ -282,7 +285,7 @@ resource containerJobInitial 'Microsoft.App/jobs@2023-05-02-preview' = if (enabl
   }
 }
 
-resource containerJobScaling 'Microsoft.App/jobs@2023-05-02-preview' = if (enableAutoscaling) {
+resource containerJobScaling 'Microsoft.App/jobs@2023-11-02-preview' = if (enableAutoscaling) {
   name: take('${containerAppName}-scale-${uniqueString(resourceGroup().id)}',32)
   location: location
   identity: {
@@ -298,6 +301,16 @@ resource containerJobScaling 'Microsoft.App/jobs@2023-05-02-preview' = if (enabl
       triggerType: 'Event'
       replicaTimeout: 1800
       replicaRetryLimit: 1
+      secrets: [
+        {
+          name: 'azp-url'
+          value: azpUrl
+        }
+        {
+          name: 'azp-token'
+          value: azpToken
+        }
+      ]
       eventTriggerConfig: {
         replicaCompletionCount: 1
         parallelism: 1
@@ -331,16 +344,6 @@ resource containerJobScaling 'Microsoft.App/jobs@2023-05-02-preview' = if (enabl
         {
           server: acr.properties.loginServer
           identity: uami.id
-        }
-      ]
-      secrets: [
-        {
-          name: 'azp-url'
-          value: azpUrl
-        }
-        {
-          name: 'azp-token'
-          value: azpToken
         }
       ]
     }

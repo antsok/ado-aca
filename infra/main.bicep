@@ -1,14 +1,17 @@
 targetScope = 'subscription'
 
 // Azure deployment parameters
-@description('The location of all resources')
-param location string = 'westeurope'
+@description('The location of all resources. Default: deployment location')
+param location string = deployment().location
 
 @description('The name of the resource group')
 param rgName string = 'adoaca-rg'
 
 @description('Whether to use a private network for the solution. Default: true')
 param usePrivateNetwork bool = true
+
+@description('The address prefix for the virtual network. Default: 10.0.0.0/24')
+param vnetAddressPrefix string = '10.0.0.0/24'
 
 @description('In addition to AAD, should it also be possible to use local auth. Default: false')
 param useLocalAuthenticationOptions bool = false
@@ -22,8 +25,8 @@ param enableAutoscaling bool = true
 @description('Name of the image to build. Default: "adoagent"')
 param imageName string = 'adoagent'
 
-@description('Version of the image to build. Default: "v1.0.0"')
-param imageVersion string = 'v1.0.0'
+@description('Version of the image to build. Default: "1.0.0"')
+param imageVersion string = '1.0.0'
 
 // Dockerfile source repository parameters
 @secure()
@@ -42,10 +45,15 @@ param ghRepo string = 'ado-aca'
 param ghBranch string = 'main'
 
 // Azure DevOps parameters
+@description('Azure DevOps project URL')
 @secure()
 param azpUrl string
+
+@description('Azure DevOps personal access token')
 @secure()
 param azpToken string
+
+@description('Azure DevOps agent pool name')
 @secure()
 param azpPool string
 
@@ -61,7 +69,7 @@ module shared 'shared.bicep' = {
   params: {
     location: location
     usePrivateNetwork: usePrivateNetwork
-    vnetPrefix: '10.100.0.0/24'
+    vnetAddressPrefix: vnetAddressPrefix
     useLocalAuthenticationOptions: useLocalAuthenticationOptions
   }
 }
@@ -87,7 +95,7 @@ module acr 'acr.bicep' = {
 }
 
 // Deploy Azure Container Jobs (or Apps) that run the ADO agent
-module ace 'aca.bicep' = {
+module aca 'aca.bicep' = {
   scope: rg
   name: '${deployment().name}-aca'
   params: {
