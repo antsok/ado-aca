@@ -12,7 +12,7 @@ param usePrivateNetwork bool = true
 param vnetName string = 'ado-agents-infra-vnet'
 
 @description('Address prefix of the virtual network. Default: 10.0.0.0/24 ')
-param vnetPrefix string = '10.0.0.0/24'
+param vnetAddressPrefix string = '10.0.0.0/24'
 
 @description('In addition to AAD, should it also be possible to use local auth. Default: false')
 param useLocalAuthenticationOptions bool = false
@@ -39,22 +39,22 @@ resource vnet 'Microsoft.Network/virtualNetworks@2023-05-01' = if(usePrivateNetw
   properties:{
     addressSpace:{
       addressPrefixes:[
-        vnetPrefix
+        vnetAddressPrefix
       ]
     }
     subnets:[
       {
         name: 'endpoints-subnet'
         properties:{
-          addressPrefix: cidrSubnet(vnetPrefix, parseCidr(vnetPrefix).cidr+1, 0)
+          addressPrefix: cidrSubnet(vnetAddressPrefix, parseCidr(vnetAddressPrefix).cidr+1, 0)
           privateEndpointNetworkPolicies: 'Disabled'
-          privateLinkServiceNetworkPolicies: 'Enabled'      
+          privateLinkServiceNetworkPolicies: 'Enabled'
         }
       }
       {
         name: 'containers-subnet'
         properties:{
-          addressPrefix: cidrSubnet(vnetPrefix, parseCidr(vnetPrefix).cidr+1, 1)
+          addressPrefix: cidrSubnet(vnetAddressPrefix, parseCidr(vnetAddressPrefix).cidr+1, 1)
           privateEndpointNetworkPolicies: 'Enabled'
           privateLinkServiceNetworkPolicies: 'Enabled'
           delegations: [
