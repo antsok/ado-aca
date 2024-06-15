@@ -8,6 +8,15 @@
 		"ghcr.io/devcontainers/features/powershell:1": {},
 		"ghcr.io/azure/azure-dev/azd:latest": {},
 		"ghcr.io/devcontainers/features/azure-cli:1": {}
+	},
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"oderwat.indent-rainbow",
+				"shardulm94.trailing-spaces",
+				"streetsidesoftware.code-spell-checker"
+			]
+		}
 	}
 
 	// Features to add to the dev container. More info: https://containers.dev/features.
